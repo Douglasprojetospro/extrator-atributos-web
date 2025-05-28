@@ -2,7 +2,7 @@ import os
 import re
 import json
 import pandas as pd
-from flask import Flask, render_template, request, redirect, url_for, send_file, flash
+from flask import Flask, render_template, request, redirect, url_for, send_file, flash, jsonify
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -30,7 +30,7 @@ class ExtratorAtributos:
 
         for atributo_nome, config in self.atributos.items():
             tipo_retorno = config['tipo_retorno']
-            variacoes = config['variacoes']
+            variacoes = config['variacoes']  # Corrigido para 'variacoes' (com 'e')
 
             # Prepara regex para cada variação
             regex_variacoes = []
@@ -45,15 +45,17 @@ class ExtratorAtributos:
                 descricao = str(row['Descrição']).lower()
                 resultado = None
 
+                # Verifica cada variação na ordem de prioridade
                 for regex, desc_padrao in regex_variacoes:
-                    if re.search(regex, descricao, re.IGNORECASE):
+                    match = re.search(regex, descricao, re.IGNORECASE)
+                    if match:
                         resultado = self.formatar_resultado(
-                            descricao,
+                            descricao,  # Passa a descrição completa para extração de valores
                             tipo_retorno,
                             atributo_nome,
                             desc_padrao
                         )
-                        break
+                        break  # Usa a primeira correspondência (maior prioridade)
 
                 self.dados_processados.at[idx, atributo_nome] = resultado if resultado else ""
 
@@ -61,6 +63,7 @@ class ExtratorAtributos:
 
     def formatar_resultado(self, valor_encontrado, tipo_retorno, nome_atributo, descricao_padrao):
         if tipo_retorno == "valor":
+            # Extrai apenas números da descrição completa
             numeros = re.findall(r'\d+', valor_encontrado)
             return numeros[0] if numeros else ""
         elif tipo_retorno == "texto":
@@ -110,29 +113,45 @@ def upload_arquivo():
 @app.route('/configuracao', methods=['GET', 'POST'])
 def configuracao():
     if request.method == 'POST':
-        nome = request.form.get('nome_atributo')
-        tipo_retorno = request.form.get('tipo_retorno')
-        variacoes = json.loads(request.form.get('variacoes'))
+        try:
+            data = request.get_json()
+            nome = data.get('nome')
+            tipo_retorno = data.get('tipo_retorno')
+            variacoes = data.get('variacoes')
 
-        extrator.atributos[nome] = {
-            'nome': nome,
-            'tipo_retorno': tipo_retorno,
-            'variacoes': variacoes
-        }
+            extrator.atributos[nome] = {
+                'nome': nome,
+                'tipo_retorno': tipo_retorno,
+                'variacoes': variacoes
+            }
 
-        flash('Atributo adicionado com sucesso!', 'success')
-        return redirect(url_for('configuracao'))
+            return jsonify({'success': True, 'message': 'Atributo adicionado com sucesso!'})
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)}), 400
 
-    return render_template('configuracao.html', atributos=extrator.atributos)
+    return render_template('configuracao.html')
+
+@app.route('/api/atributos', methods=['GET', 'DELETE'])
+def gerenciar_atributos():
+    if request.method == 'GET':
+        return jsonify(extrator.atributos)
+    elif request.method == 'DELETE':
+        nome = request.args.get('nome')
+        if nome in extrator.atributos:
+            del extrator.atributos[nome]
+            return jsonify({'success': True})
+        return jsonify({'success': False}), 404
 
 @app.route('/processar', methods=['POST'])
 def processar():
     try:
-        extrator.processar_dados()
-        return redirect(url_for('resultados'))
+        dados_processados = extrator.processar_dados()
+        # Salva os dados processados temporariamente para download
+        output_path = os.path.join(app.config['UPLOAD_FOLDER'], 'resultados_processados.xlsx')
+        dados_processados.to_excel(output_path, index=False)
+        return jsonify({'success': True})
     except Exception as e:
-        flash(f'Erro ao processar dados: {str(e)}', 'error')
-        return redirect(url_for('configuracao'))
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/resultados')
 def resultados():
@@ -140,7 +159,9 @@ def resultados():
         flash('Nenhum resultado disponível. Processe os dados primeiro.', 'error')
         return redirect(url_for('configuracao'))
 
-    return render_template('resultados.html', dados=extrator.dados_processados.to_html(classes='table table-striped'))
+    # Converter para HTML mantendo apenas as primeiras 50 linhas para exibição
+    dados_html = extrator.dados_processados.head(50).to_html(classes='table table-striped', index=False)
+    return render_template('resultados.html', dados=dados_html)
 
 @app.route('/exportar')
 def exportar():
