@@ -1,175 +1,308 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuração de Atributos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .variation-item { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+        .patterns-list { margin-top: 5px; }
+        .pattern-tag { display: inline-block; background: #e9ecef; padding: 2px 5px; margin: 2px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Configuração de Atributos</h1>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-{% block title %}Configuração de Atributos{% endblock %}
-
-{% block content %}
-<div class="row">
-    <div class="col-md-8">
-        <div class="card shadow mb-4">
-            <div class="card-header bg-primary text-white">
-                <h2 class="h4 mb-0"><i class="bi bi-gear me-2"></i>Configurar Novo Atributo</h2>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        Adicionar Novo Atributo
+                    </div>
+                    <div class="card-body">
+                        <form id="form-atributo">
+                            <div class="mb-3">
+                                <label for="nome-atributo" class="form-label">Nome do Atributo</label>
+                                <input type="text" class="form-control" id="nome-atributo" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="tipo-retorno" class="form-label">Tipo de Retorno</label>
+                                <select class="form-select" id="tipo-retorno" required>
+                                    <option value="valor">Valor (ex: '110')</option>
+                                    <option value="texto">Texto Padrão (ex: '110V')</option>
+                                    <option value="completo">Descrição Completa (ex: 'Voltagem: 110V')</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Variações</label>
+                                <div id="variacoes-container">
+                                    <!-- Variações serão adicionadas aqui -->
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btn-add-variacao">
+                                    Adicionar Variação
+                                </button>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">Registrar Atributo</button>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header">
+                        Gerenciar Configurações
+                    </div>
+                    <div class="card-body">
+                        <form action="/salvar-configuracao" method="POST" class="mb-3">
+                            <div class="mb-3">
+                                <label for="nome-config" class="form-label">Salvar Configuração Atual</label>
+                                <input type="text" class="form-control" id="nome-config" name="nome_config" required>
+                            </div>
+                            <button type="submit" class="btn btn-success">Salvar Configuração</button>
+                        </form>
+                        
+                        <form action="/carregar-configuracao" method="POST" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="config-file" class="form-label">Carregar Configuração</label>
+                                <input class="form-control" type="file" id="config-file" name="config_file" accept=".json" required>
+                            </div>
+                            <button type="submit" class="btn btn-info">Carregar Configuração</button>
+                        </form>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                <form id="formAtributo">
-                    <div class="mb-3">
-                        <label for="nomeAtributo" class="form-label">Nome do Atributo</label>
-                        <input type="text" class="form-control" id="nomeAtributo" required>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Atributos Configurados</span>
+                        <button class="btn btn-sm btn-primary" id="btn-processar">Processar Dados</button>
                     </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Tipo de Retorno</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="tipoRetorno" id="retornoValor" value="valor" checked>
-                            <label class="form-check-label" for="retornoValor">Valor (ex: '110')</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="tipoRetorno" id="retornoTexto" value="texto">
-                            <label class="form-check-label" for="retornoTexto">Texto Padrão (ex: '110V')</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="tipoRetorno" id="retornoCompleto" value="completo">
-                            <label class="form-check-label" for="retornoCompleto">Descrição Completa (ex: 'Voltagem: 110V')</label>
+                    <div class="card-body">
+                        <div id="atributos-lista">
+                            <!-- Atributos serão carregados aqui -->
                         </div>
                     </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Variações e Padrões</label>
-                        <div id="variacoesContainer">
-                            <!-- Variações adicionadas via JS -->
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btnAddVariacao">
-                            <i class="bi bi-plus-circle me-1"></i>Adicionar Variação
-                        </button>
-                    </div>
-
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-save me-2"></i>Salvar Atributo
-                        </button>
-                    </div>
-                </form>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="col-md-4">
-        <div class="card shadow">
-            <div class="card-header bg-primary text-white">
-                <h2 class="h4 mb-0"><i class="bi bi-list-check me-2"></i>Atributos Configurados</h2>
-            </div>
-            <div class="card-body">
-                {% if atributos %}
-                    <ul class="list-group mb-3">
-                        {% for nome, config in atributos.items() %}
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                {{ nome }}
-                                <span class="badge bg-primary rounded-pill">
-                                    {{ config['variacoes']|length }} var.
-                                </span>
-                            </li>
-                        {% endfor %}
-                    </ul>
-
-                    <form method="POST" action="{{ url_for('processar') }}">
-                        <button type="submit" class="btn btn-success w-100">
-                            <i class="bi bi-play-circle me-2"></i>Processar Dados
-                        </button>
-                    </form>
-                {% else %}
-                    <div class="alert alert-info">
-                        Nenhum atributo configurado ainda. Adicione seu primeiro atributo ao lado.
+    <!-- Modal para adicionar variação -->
+    <div class="modal fade" id="variacaoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Adicionar Variação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="descricao-variacao" class="form-label">Descrição da Variação</label>
+                        <input type="text" class="form-control" id="descricao-variacao">
                     </div>
-                {% endif %}
+                    <div class="mb-3">
+                        <label for="padroes-variacao" class="form-label">Padrões (separados por vírgula)</label>
+                        <input type="text" class="form-control" id="padroes-variacao" placeholder="ex: 110v, 110V, 127">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btn-confirm-variacao">Adicionar</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
 
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const container = document.getElementById('variacoesContainer');
-    const btnAdd = document.getElementById('btnAddVariacao');
-
-    function criarVariacao(index) {
-        const div = document.createElement('div');
-        div.className = 'variacao-item mb-3 p-3 border rounded';
-        div.innerHTML = `
-            <div class="d-flex justify-content-between mb-2">
-                <label class="form-label">Variação ${index}</label>
-                <button type="button" class="btn btn-sm btn-outline-danger btn-remover-variacao">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </div>
-            <div class="mb-2">
-                <input type="text" class="form-control descricao" placeholder="Descrição (ex: 110V)" required>
-            </div>
-            <div>
-                <textarea class="form-control padroes" rows="2" placeholder="Padrões (um por linha)"></textarea>
-                <div class="form-text">Ex: 110V, 110 V, bivolt</div>
-            </div>
-        `;
-        container.appendChild(div);
-
-        div.querySelector('.btn-remover-variacao').addEventListener('click', () => {
-            container.removeChild(div);
-        });
-    }
-
-    btnAdd.addEventListener('click', () => {
-        const index = container.children.length + 1;
-        criarVariacao(index);
-    });
-
-    document.getElementById('formAtributo').addEventListener('submit', function (e) {
-        e.preventDefault();
-
-        const nome = document.getElementById('nomeAtributo').value.trim();
-        const tipoRetorno = document.querySelector('input[name="tipoRetorno"]:checked').value;
-        const variacoes = [];
-
-        container.querySelectorAll('.variacao-item').forEach(item => {
-            const descricao = item.querySelector('.descricao').value.trim();
-            const padroes = item.querySelector('.padroes').value
-                .split('\n')
-                .map(p => p.trim())
-                .filter(p => p);
-
-            if (descricao && padroes.length > 0) {
-                variacoes.push({ descricao, padroes });
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            let variacoes = [];
+            const variacaoModal = new bootstrap.Modal(document.getElementById('variacaoModal'));
+            
+            // Carregar atributos existentes
+            carregarAtributos();
+            
+            // Abrir modal para adicionar variação
+            $('#btn-add-variacao').click(function() {
+                $('#descricao-variacao, #padroes-variacao').val('');
+                variacaoModal.show();
+            });
+            
+            // Confirmar adição de variação
+            $('#btn-confirm-variacao').click(function() {
+                const descricao = $('#descricao-variacao').val().trim();
+                const padroes = $('#padroes-variacao').val().split(',').map(p => p.trim()).filter(p => p);
+                
+                if (!descricao || padroes.length === 0) {
+                    alert('Preencha a descrição e pelo menos um padrão');
+                    return;
+                }
+                
+                variacoes.push({
+                    descricao: descricao,
+                    padroes: padroes
+                });
+                
+                renderVariacoes();
+                variacaoModal.hide();
+            });
+            
+            // Renderizar variações
+            function renderVariacoes() {
+                const container = $('#variacoes-container');
+                container.empty();
+                
+                if (variacoes.length === 0) {
+                    container.append('<p class="text-muted">Nenhuma variação adicionada</p>');
+                    return;
+                }
+                
+                variacoes.forEach((variacao, index) => {
+                    const variationItem = $(`
+                        <div class="variation-item" data-index="${index}">
+                            <div class="d-flex justify-content-between">
+                                <strong>${variacao.descricao}</strong>
+                                <button type="button" class="btn-close btn-remove-variation" data-index="${index}"></button>
+                            </div>
+                            <div class="patterns-list">
+                                ${variacao.padroes.map(p => `<span class="pattern-tag">${p}</span>`).join('')}
+                            </div>
+                        </div>
+                    `);
+                    
+                    container.append(variationItem);
+                });
+                
+                // Adicionar evento para remover variação
+                $('.btn-remove-variation').click(function() {
+                    const index = $(this).data('index');
+                    variacoes.splice(index, 1);
+                    renderVariacoes();
+                });
             }
-        });
-
-        if (!nome) {
-            alert('Informe o nome do atributo.');
-            return;
-        }
-
-        if (variacoes.length === 0) {
-            alert('Adicione pelo menos uma variação com padrões.');
-            return;
-        }
-
-        fetch("{{ url_for('configuracao') }}", {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-                nome_atributo: nome,
-                tipo_retorno: tipoRetorno,
-                variacoes: JSON.stringify(variacoes)
-            })
-        })
-        .then(response => {
-            if (response.redirected) {
-                window.location.href = response.url;
+            
+            // Enviar atributo para o servidor
+            $('#form-atributo').submit(function(e) {
+                e.preventDefault();
+                
+                const nome = $('#nome-atributo').val().trim();
+                const tipoRetorno = $('#tipo-retorno').val();
+                
+                if (variacoes.length === 0) {
+                    alert('Adicione pelo menos uma variação');
+                    return;
+                }
+                
+                $.ajax({
+                    url: '/configuracao',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        nome: nome,
+                        tipo_retorno: tipoRetorno,
+                        variacoes: variacoes
+                    }),
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Atributo adicionado com sucesso!');
+                            $('#nome-atributo').val('');
+                            variacoes = [];
+                            renderVariacoes();
+                            carregarAtributos();
+                        } else {
+                            alert('Erro: ' + response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        alert('Erro ao adicionar atributo: ' + xhr.responseJSON?.message || 'Erro desconhecido');
+                    }
+                });
+            });
+            
+            // Carregar atributos do servidor
+            function carregarAtributos() {
+                $.get('/api/atributos', function(data) {
+                    const container = $('#atributos-lista');
+                    container.empty();
+                    
+                    if (Object.keys(data).length === 0) {
+                        container.append('<p class="text-muted">Nenhum atributo configurado</p>');
+                        return;
+                    }
+                    
+                    for (const [nome, config] of Object.entries(data)) {
+                        const atributoItem = $(`
+                            <div class="card mb-2">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <h5 class="card-title">${nome}</h5>
+                                            <p class="card-text">
+                                                <small>Tipo de retorno: ${config.tipo_retorno}</small><br>
+                                                <small>Variações: ${config.variacoes.length}</small>
+                                            </p>
+                                        </div>
+                                        <button class="btn btn-sm btn-danger btn-remove-atributo" data-nome="${nome}">Remover</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `);
+                        
+                        container.append(atributoItem);
+                    }
+                    
+                    // Adicionar evento para remover atributo
+                    $('.btn-remove-atributo').click(function() {
+                        const nome = $(this).data('nome');
+                        if (confirm(`Tem certeza que deseja remover o atributo "${nome}"?`)) {
+                            $.ajax({
+                                url: '/api/atributos?nome=' + encodeURIComponent(nome),
+                                method: 'DELETE',
+                                success: function(response) {
+                                    if (response.success) {
+                                        carregarAtributos();
+                                    } else {
+                                        alert('Erro ao remover atributo');
+                                    }
+                                }
+                            });
+                        }
+                    });
+                });
             }
-        })
-        .catch(error => console.error('Erro:', error));
-    });
-
-    // Adiciona a primeira variação automaticamente
-    btnAdd.click();
-});
-</script>
-{% endblock %}
+            
+            // Processar dados
+            $('#btn-processar').click(function() {
+                $.post('/processar', function(response) {
+                    if (response.success) {
+                        window.location.href = '/resultados';
+                    } else {
+                        alert('Erro ao processar: ' + response.error);
+                    }
+                }).fail(function(xhr) {
+                    alert('Erro ao processar: ' + xhr.responseJSON?.error || 'Erro desconhecido');
+                });
+            });
+            
+            // Carregar lista de configurações salvas
+            $.get('/listar-configuracoes', function(configs) {
+                // Implementar se necessário
+            });
+        });
+    </script>
+</body>
+</html>
