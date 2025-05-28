@@ -8,6 +8,9 @@
     <style>
         .variation-item { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
         .pattern-item { display: inline-block; margin-right: 5px; margin-bottom: 5px; }
+        .file-upload-container { border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 5px; }
+        .file-upload-container:hover { border-color: #0d6efd; }
+        .required-field::after { content: " *"; color: red; }
     </style>
 </head>
 <body>
@@ -17,59 +20,107 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                    <div class="alert alert-{{ category }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
 
+        <!-- Seção de Upload de Arquivo (se não houver dados carregados) -->
+        {% if not extrator.dados_originais %}
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Carregar Planilha</h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('upload_arquivo') }}" method="POST" enctype="multipart/form-data" id="upload-form">
+                    <div class="file-upload-container mb-3">
+                        <input type="file" class="form-control d-none" id="arquivo" name="arquivo" accept=".xlsx,.xls" required>
+                        <label for="arquivo" class="btn btn-outline-primary">
+                            <i class="bi bi-upload"></i> Selecione um arquivo Excel
+                        </label>
+                        <p class="mt-2 mb-0 text-muted">Arquivos suportados: .xlsx, .xls</p>
+                        <div id="file-name" class="mt-2 fw-bold"></div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-primary" id="btn-upload">
+                            <i class="bi bi-upload"></i> Carregar Planilha
+                        </button>
+                        <a href="{{ url_for('gerar_modelo') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-download"></i> Baixar Modelo
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle"></i> Planilha carregada com sucesso! 
+            <strong>{{ extrator.dados_originais.shape[0] }}</strong> registros encontrados.
+            <a href="{{ url_for('index') }}" class="float-end btn btn-sm btn-outline-danger">
+                <i class="bi bi-x-circle"></i> Carregar nova planilha
+            </a>
+        </div>
+        {% endif %}
+
         <div class="row">
             <div class="col-md-6">
                 <div class="card mb-4">
-                    <div class="card-header">
-                        Adicionar Novo Atributo
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Adicionar Novo Atributo</h5>
                     </div>
                     <div class="card-body">
                         <form id="form-atributo">
                             <div class="mb-3">
-                                <label for="nome-atributo" class="form-label">Nome do Atributo</label>
+                                <label for="nome-atributo" class="form-label required-field">Nome do Atributo</label>
                                 <input type="text" class="form-control" id="nome-atributo" required>
+                                <div class="form-text">Exemplo: Voltagem, Cor, Potência</div>
                             </div>
                             
                             <div class="mb-3">
-                                <label class="form-label">Tipo de Retorno</label>
+                                <label class="form-label required-field">Tipo de Retorno</label>
                                 <select class="form-select" id="tipo-retorno" required>
                                     <option value="">Selecione...</option>
                                     <option value="valor">Valor (ex: '110')</option>
                                     <option value="texto">Texto Padrão (ex: '110V')</option>
                                     <option value="completo">Descrição Completa (ex: 'Voltagem: 110V')</option>
                                 </select>
+                                <div class="form-text">Como o valor será exibido nos resultados</div>
                             </div>
                             
                             <div class="mb-3">
-                                <label class="form-label">Variações</label>
+                                <label class="form-label required-field">Variações</label>
                                 <div id="variacoes-container">
                                     <!-- Variações serão adicionadas aqui -->
                                 </div>
                                 <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btn-add-variacao">
-                                    Adicionar Variação
+                                    <i class="bi bi-plus-circle"></i> Adicionar Variação
                                 </button>
+                                <div class="form-text">Adicione variações em ordem de prioridade (a primeira correspondência será usada)</div>
                             </div>
                             
-                            <button type="submit" class="btn btn-primary">Registrar Atributo</button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Registrar Atributo
+                            </button>
                         </form>
                     </div>
                 </div>
 
                 <div class="card">
-                    <div class="card-header">
-                        Gerenciar Configurações
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">Gerenciar Configurações</h5>
                     </div>
                     <div class="card-body">
                         <form action="{{ url_for('salvar_configuracao') }}" method="POST" class="mb-3">
                             <div class="input-group">
-                                <input type="text" class="form-control" name="nome_arquivo" placeholder="Nome do arquivo" required>
-                                <button type="submit" class="btn btn-success">Salvar Configuração</button>
+                                <input type="text" class="form-control" name="nome_arquivo" placeholder="Nome do arquivo de configuração" required>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="bi bi-save"></i> Salvar Configuração
+                                </button>
                             </div>
+                            <div class="form-text">A configuração será salva como um arquivo .json</div>
                         </form>
                         
                         <form action="{{ url_for('carregar_configuracao') }}" method="POST">
@@ -80,7 +131,9 @@
                                         <option value="{{ file }}">{{ file }}</option>
                                     {% endfor %}
                                 </select>
-                                <button type="submit" class="btn btn-primary">Carregar Configuração</button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-folder2-open"></i> Carregar Configuração
+                                </button>
                             </div>
                         </form>
                     </div>
@@ -89,14 +142,26 @@
             
             <div class="col-md-6">
                 <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span>Atributos Configurados</span>
-                        <button class="btn btn-sm btn-success" id="btn-processar">Processar Dados</button>
+                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Atributos Configurados</h5>
+                        <div>
+                            {% if extrator.dados_originais %}
+                            <button class="btn btn-light btn-sm" id="btn-processar">
+                                <i class="bi bi-gear"></i> Processar Dados
+                            </button>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="card-body">
                         <div id="atributos-lista">
-                            <!-- Atributos serão carregados aqui via JavaScript -->
-                            <p class="text-muted">Nenhum atributo configurado ainda.</p>
+                            {% if not extrator.atributos %}
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i> Nenhum atributo configurado ainda.
+                                {% if not extrator.dados_originais %}
+                                <div class="mt-2">Carregue uma planilha primeiro para começar.</div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -119,6 +184,8 @@
         </div>
     </div>
 
+    <!-- Ícones Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Variável de template para variação
@@ -126,18 +193,32 @@
             <div class="variation-item">
                 <div class="d-flex justify-content-between mb-2">
                     <input type="text" class="form-control form-control-sm variation-desc" placeholder="Descrição da variação" required>
-                    <button type="button" class="btn btn-sm btn-outline-danger ms-2 remove-variation">×</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger ms-2 remove-variation">
+                        <i class="bi bi-trash"></i>
+                    </button>
                 </div>
                 <div class="variation-patterns">
-                    <input type="text" class="form-control form-control-sm mb-2 new-pattern" placeholder="Novo padrão">
-                    <button type="button" class="btn btn-sm btn-outline-secondary add-pattern">Adicionar Padrão</button>
+                    <input type="text" class="form-control form-control-sm mb-2 new-pattern" placeholder="Novo padrão (ex: 110V, 220V)">
+                    <button type="button" class="btn btn-sm btn-outline-secondary add-pattern">
+                        <i class="bi bi-plus"></i> Adicionar Padrão
+                    </button>
                     <div class="patterns-list mt-2"></div>
                 </div>
             </div>
         `;
 
+        // Mostrar nome do arquivo selecionado
+        document.getElementById('arquivo')?.addEventListener('change', function(e) {
+            const fileName = document.getElementById('file-name');
+            if (this.files.length > 0) {
+                fileName.textContent = this.files[0].name;
+            } else {
+                fileName.textContent = '';
+            }
+        });
+
         // Adiciona uma nova variação
-        document.getElementById('btn-add-variacao').addEventListener('click', function() {
+        document.getElementById('btn-add-variacao')?.addEventListener('click', function() {
             const container = document.getElementById('variacoes-container');
             const div = document.createElement('div');
             div.innerHTML = variationTemplate;
@@ -151,7 +232,9 @@
         function setupVariationEvents(variationElement) {
             // Remover variação
             variationElement.querySelector('.remove-variation').addEventListener('click', function() {
-                variationElement.remove();
+                if (confirm('Tem certeza que deseja remover esta variação?')) {
+                    variationElement.remove();
+                }
             });
             
             // Adicionar padrão
@@ -188,17 +271,17 @@
         }
 
         // Formulário de atributo
-        document.getElementById('form-atributo').addEventListener('submit', function(e) {
+        document.getElementById('form-atributo')?.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            const nomeAtributo = document.getElementById('nome-atributo').value;
+            const nomeAtributo = document.getElementById('nome-atributo').value.trim();
             const tipoRetorno = document.getElementById('tipo-retorno').value;
             const variacoes = [];
             
             // Coletar todas as variações
             document.querySelectorAll('.variation-item').forEach(variation => {
-                const descricao = variation.querySelector('.variation-desc').value;
-                const padroes = Array.from(variation.querySelectorAll('input[name="patterns"]')).map(input => input.value);
+                const descricao = variation.querySelector('.variation-desc').value.trim();
+                const padroes = Array.from(variation.querySelectorAll('input[name="patterns"]')).map(input => input.value.trim());
                 
                 if (descricao && padroes.length > 0) {
                     variacoes.push({
@@ -207,6 +290,16 @@
                     });
                 }
             });
+            
+            if (!nomeAtributo) {
+                alert('O nome do atributo é obrigatório!');
+                return;
+            }
+            
+            if (!tipoRetorno) {
+                alert('Selecione um tipo de retorno!');
+                return;
+            }
             
             if (variacoes.length === 0) {
                 alert('Adicione pelo menos uma variação com padrões!');
@@ -250,7 +343,14 @@
                     const container = document.getElementById('atributos-lista');
                     
                     if (Object.keys(data).length === 0) {
-                        container.innerHTML = '<p class="text-muted">Nenhum atributo configurado ainda.</p>';
+                        container.innerHTML = `
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i> Nenhum atributo configurado ainda.
+                                {% if not extrator.dados_originais %}
+                                <div class="mt-2">Carregue uma planilha primeiro para começar.</div>
+                                {% endif %}
+                            </div>
+                        `;
                         return;
                     }
                     
@@ -259,12 +359,21 @@
                         html += `
                             <div class="list-group-item d-flex justify-content-between align-items-center">
                                 <div>
-                                    <strong>${nome}</strong> (${config.tipo_retorno})
-                                    <div class="text-muted small">${config.variacoes.length} variações</div>
+                                    <strong>${nome}</strong> 
+                                    <span class="badge bg-secondary ms-2">${config.tipo_retorno}</span>
+                                    <div class="text-muted small mt-1">
+                                        <span class="badge bg-light text-dark">
+                                            ${config.variacoes.length} ${config.variacoes.length === 1 ? 'variação' : 'variações'}
+                                        </span>
+                                    </div>
                                 </div>
                                 <div>
-                                    <button class="btn btn-sm btn-outline-primary me-1 edit-atributo" data-nome="${nome}">Editar</button>
-                                    <button class="btn btn-sm btn-outline-danger delete-atributo" data-nome="${nome}">Remover</button>
+                                    <button class="btn btn-sm btn-outline-primary me-1 edit-atributo" data-nome="${nome}">
+                                        <i class="bi bi-pencil"></i> Editar
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger delete-atributo" data-nome="${nome}">
+                                        <i class="bi bi-trash"></i> Remover
+                                    </button>
                                 </div>
                             </div>
                         `;
@@ -322,11 +431,15 @@
                                         <div class="d-flex justify-content-between mb-2">
                                             <input type="text" class="form-control form-control-sm variation-desc" 
                                                    value="${variacao.descricao}" placeholder="Descrição da variação" required>
-                                            <button type="button" class="btn btn-sm btn-outline-danger ms-2 remove-variation">×</button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger ms-2 remove-variation">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
                                         </div>
                                         <div class="variation-patterns">
                                             <input type="text" class="form-control form-control-sm mb-2 new-pattern" placeholder="Novo padrão">
-                                            <button type="button" class="btn btn-sm btn-outline-secondary add-pattern">Adicionar Padrão</button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary add-pattern">
+                                                <i class="bi bi-plus"></i> Adicionar Padrão
+                                            </button>
                                             <div class="patterns-list mt-2">
                                 `;
                                 
@@ -351,13 +464,17 @@
                             modalContent += `
                                         </div>
                                         <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btn-modal-add-variacao">
-                                            Adicionar Variação
+                                            <i class="bi bi-plus-circle"></i> Adicionar Variação
                                         </button>
                                     </div>
                                     
                                     <div class="d-flex justify-content-end">
-                                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
-                                        <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">
+                                            <i class="bi bi-x-circle"></i> Cancelar
+                                        </button>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-save"></i> Salvar Alterações
+                                        </button>
                                     </div>
                                 </form>
                             `;
@@ -387,8 +504,8 @@
                                 
                                 // Coletar variações do modal
                                 document.querySelectorAll('#modal-variacoes-container .variation-item').forEach(variation => {
-                                    const descricao = variation.querySelector('.variation-desc').value;
-                                    const padroes = Array.from(variation.querySelectorAll('input[name="patterns"]')).map(input => input.value);
+                                    const descricao = variation.querySelector('.variation-desc').value.trim();
+                                    const padroes = Array.from(variation.querySelectorAll('input[name="patterns"]')).map(input => input.value.trim());
                                     
                                     if (descricao && padroes.length > 0) {
                                         variacoes.push({
@@ -442,6 +559,9 @@
                 return;
             }
             
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processando...';
+            
             fetch("{{ url_for('processar') }}", {
                 method: 'POST'
             })
@@ -451,7 +571,14 @@
                     window.location.href = "{{ url_for('resultados') }}";
                 } else {
                     alert('Erro ao processar: ' + data.error);
+                    this.disabled = false;
+                    this.innerHTML = '<i class="bi bi-gear"></i> Processar Dados';
                 }
+            })
+            .catch(error => {
+                alert('Erro ao processar dados');
+                this.disabled = false;
+                this.innerHTML = '<i class="bi bi-gear"></i> Processar Dados';
             });
         });
 
@@ -460,7 +587,7 @@
             loadAtributos();
             
             // Adiciona uma variação inicial se o container estiver vazio
-            if (document.getElementById('variacoes-container').children.length === 0) {
+            if (document.getElementById('variacoes-container') && document.getElementById('variacoes-container').children.length === 0) {
                 document.getElementById('btn-add-variacao').click();
             }
         });
