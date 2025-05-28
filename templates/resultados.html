@@ -1,38 +1,38 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resultados do Processamento</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body>
-    <div class="container mt-5">
-        <h1 class="mb-4">Resultados do Processamento</h1>
-        
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+{% extends "base.html" %}
 
-        <div class="card mb-4">
-            <div class="card-header">
-                Dados Processados (mostrando as primeiras 50 linhas)
-            </div>
-            <div class="card-body">
-                {{ dados_html|safe }}
-            </div>
+{% block title %}Resultados do Processamento{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Resultados do Processamento</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <strong>Dados Processados</strong> <span class="text-muted">(mostrando as primeiras 50 linhas)</span>
         </div>
-        
-        <div class="d-flex justify-content-between">
-            <a href="/configuracao" class="btn btn-secondary">Voltar para Configuração</a>
-            <a href="/exportar" class="btn btn-primary">Exportar Resultados</a>
+        <div class="card-body table-responsive">
+            {{ dados_html | safe }}
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+    <div class="d-flex justify-content-between">
+        <a href="{{ url_for('configuracao') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left-circle me-1"></i> Voltar para Configuração
+        </a>
+        <a href="{{ url_for('exportar') }}" class="btn btn-primary">
+            <i class="bi bi-download me-1"></i> Exportar Resultados
+        </a>
+    </div>
+</div>
+{% endblock %}
