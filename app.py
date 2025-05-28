@@ -2,6 +2,7 @@ import os
 import re
 import json
 import pandas as pd
+from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, send_file, flash, jsonify
 from werkzeug.utils import secure_filename
 
@@ -14,6 +15,11 @@ app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB
 # Garante que as pastas existam
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['CONFIG_FOLDER'], exist_ok=True)
+
+# Disponibiliza a variável 'now' para todos os templates
+@app.context_processor
+def inject_now():
+    return {'now': datetime.now()}
 
 class ExtratorAtributos:
     def __init__(self):
@@ -55,7 +61,6 @@ class ExtratorAtributos:
                 descricao = str(row['Descrição']).lower()
                 resultado = None
 
-                # Verifica cada variação na ordem de prioridade
                 for regex, desc_padrao in regex_variacoes:
                     match = re.search(regex, descricao, re.IGNORECASE)
                     if match:
@@ -66,7 +71,7 @@ class ExtratorAtributos:
                             desc_padrao,
                             match.group()
                         )
-                        break  # Usa a primeira correspondência (maior prioridade)
+                        break
 
                 self.dados_processados.at[idx, atributo_nome] = resultado if resultado else ""
 
@@ -74,7 +79,6 @@ class ExtratorAtributos:
 
     def formatar_resultado(self, descricao, tipo_retorno, nome_atributo, descricao_padrao, valor_encontrado):
         if tipo_retorno == "valor":
-            # Extrai apenas números do valor encontrado
             numeros = re.findall(r'\d+', valor_encontrado)
             return numeros[0] if numeros else ""
         elif tipo_retorno == "texto":
@@ -142,15 +146,11 @@ def configuracao():
         except Exception as e:
             return jsonify({'success': False, 'message': str(e)}), 400
 
-    # Lista arquivos de configuração disponíveis
-    config_files = []
-    for file in os.listdir(app.config['CONFIG_FOLDER']):
-        if file.endswith('.json'):
-            config_files.append(file)
+    config_files = [f for f in os.listdir(app.config['CONFIG_FOLDER']) if f.endswith('.json')]
 
-    return render_template('configuracao.html', 
-                         config_files=config_files,
-                         atributos=extrator.atributos)
+    return render_template('configuracao.html',
+                           config_files=config_files,
+                           atributos=extrator.atributos)
 
 @app.route('/api/atributos', methods=['GET', 'DELETE', 'PUT'])
 def gerenciar_atributos():
@@ -216,7 +216,6 @@ def carregar_configuracao():
 def processar():
     try:
         dados_processados = extrator.processar_dados()
-        # Salva os dados processados temporariamente para download
         output_path = os.path.join(app.config['UPLOAD_FOLDER'], 'resultados_processados.xlsx')
         dados_processados.to_excel(output_path, index=False)
         return jsonify({'success': True})
@@ -229,7 +228,6 @@ def resultados():
         flash('Nenhum resultado disponível. Processe os dados primeiro.', 'error')
         return redirect(url_for('configuracao'))
 
-    # Converter para HTML mantendo apenas as primeiras 50 linhas para exibição
     dados_html = extrator.dados_processados.head(50).to_html(classes='table table-striped', index=False)
     return render_template('resultados.html', dados=dados_html)
 
