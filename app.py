@@ -1,3 +1,4 @@
+import os
 import re
 import json
 import pandas as pd
@@ -44,7 +45,6 @@ class ExtratorAtributos:
                 descricao = str(row['Descrição']).lower()
                 resultado = None
                 
-                # Verifica cada variação na ordem de prioridade
                 for regex, desc_padrao in regex_variacoes:
                     match = re.search(regex, descricao, re.IGNORECASE)
                     if match:
@@ -54,7 +54,7 @@ class ExtratorAtributos:
                             atributo_nome,
                             desc_padrao
                         )
-                        break  # Usa a primeira correspondência (maior prioridade)
+                        break
                 
                 self.dados_processados.at[idx, atributo_nome] = resultado if resultado else ""
         
@@ -62,7 +62,6 @@ class ExtratorAtributos:
     
     def formatar_resultado(self, valor_encontrado, tipo_retorno, nome_atributo, descricao_padrao):
         if tipo_retorno == "valor":
-            # Extrai apenas números
             numeros = re.findall(r'\d+', valor_encontrado)
             return numeros[0] if numeros else ""
         elif tipo_retorno == "texto":
@@ -95,7 +94,6 @@ def upload_arquivo():
         
         try:
             extrator.dados_originais = pd.read_excel(filepath)
-            
             if 'ID' not in extrator.dados_originais.columns or 'Descrição' not in extrator.dados_originais.columns:
                 flash("A planilha deve conter as colunas 'ID' e 'Descrição'", 'error')
                 return redirect(url_for('index'))
@@ -107,14 +105,12 @@ def upload_arquivo():
             flash(f'Erro ao carregar planilha: {str(e)}', 'error')
             return redirect(url_for('index'))
     
-    else:
-        flash('Tipo de arquivo não permitido. Use apenas Excel (.xlsx, .xls)', 'error')
-        return redirect(url_for('index'))
+    flash('Tipo de arquivo não permitido. Use apenas Excel (.xlsx, .xls)', 'error')
+    return redirect(url_for('index'))
 
 @app.route('/configuracao', methods=['GET', 'POST'])
 def configuracao():
     if request.method == 'POST':
-        # Processar adição de novo atributo
         nome = request.form.get('nome_atributo')
         tipo_retorno = request.form.get('tipo_retorno')
         variacoes = json.loads(request.form.get('variacoes'))
