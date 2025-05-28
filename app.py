@@ -49,7 +49,7 @@ class ExtratorAtributos:
             regex_variacoes = []
             for variacao in variacoes:
                 padroes_escaped = [re.escape(p) for p in variacao['padroes']]
-                regex = r'\\b(' + '|'.join(padroes_escaped) + r')\\b'
+                regex = r'\b(' + '|'.join(padroes_escaped) + r')\b'
                 regex_variacoes.append((regex, variacao['descricao']))
 
             self.dados_processados[atributo_nome] = ""
@@ -208,6 +208,9 @@ def carregar_configuracao():
 @app.route('/processar', methods=['POST'])
 def processar():
     try:
+        if not extrator.atributos:
+            return jsonify({'success': False, 'error': "Nenhum atributo configurado. Adicione pelo menos um atributo antes de processar."}), 400
+
         dados_processados = extrator.processar_dados()
         output_path = os.path.join(app.config['UPLOAD_FOLDER'], 'resultados_processados.xlsx')
         dados_processados.to_excel(output_path, index=False)
