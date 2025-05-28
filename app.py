@@ -62,22 +62,22 @@ class ExtratorAtributos:
                     match = re.search(regex, descricao, re.IGNORECASE)
                     if match:
                         resultado = self.formatar_resultado(
-                            descricao, tipo_retorno, atributo_nome, desc_padrao, match.group())
+                            descricao, tipo_retorno, desc_padrao, match.group())
                         break
 
                 self.dados_processados.at[idx, atributo_nome] = resultado if resultado else ""
 
         return self.dados_processados
 
-    def formatar_resultado(self, descricao, tipo_retorno, nome_atributo, descricao_padrao, valor_encontrado):
+    def formatar_resultado(self, descricao, tipo_retorno, descricao_padrao, valor_encontrado):
         if tipo_retorno == "valor":
             numeros = re.findall(r'\d+', valor_encontrado)
             return numeros[0] if numeros else ""
         elif tipo_retorno == "texto":
             return descricao_padrao
         elif tipo_retorno == "completo":
-            return f"{nome_atributo}: {descricao_padrao}"
-        return valor_encontrado
+            return valor_encontrado
+        return descricao_padrao
 
 extrator = ExtratorAtributos()
 
