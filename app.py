@@ -36,7 +36,7 @@ class ExtratorAtributos:
             regex_variacoes = []
             for variacao in variacoes:
                 padroes_escaped = [re.escape(p) for p in variacao['padroes']]
-                regex = r'\\b(' + '|'.join(padroes_escaped) + r')\\b'
+                regex = r'\b(' + '|'.join(padroes_escaped) + r')\b'
                 regex_variacoes.append((regex, variacao['descricao']))
 
             self.dados_processados[atributo_nome] = ""
@@ -46,10 +46,9 @@ class ExtratorAtributos:
                 resultado = None
 
                 for regex, desc_padrao in regex_variacoes:
-                    match = re.search(regex, descricao, re.IGNORECASE)
-                    if match:
+                    if re.search(regex, descricao, re.IGNORECASE):
                         resultado = self.formatar_resultado(
-                            match.group(1),
+                            descricao,
                             tipo_retorno,
                             atributo_nome,
                             desc_padrao
@@ -62,7 +61,7 @@ class ExtratorAtributos:
 
     def formatar_resultado(self, valor_encontrado, tipo_retorno, nome_atributo, descricao_padrao):
         if tipo_retorno == "valor":
-            numeros = re.findall(r'\\d+', valor_encontrado)
+            numeros = re.findall(r'\d+', valor_encontrado)
             return numeros[0] if numeros else ""
         elif tipo_retorno == "texto":
             return descricao_padrao
@@ -160,7 +159,7 @@ def exportar():
 @app.route('/gerar-modelo')
 def gerar_modelo():
     modelo = pd.DataFrame(columns=['ID', 'Descrição'])
-    modelo.loc[0] = ['001', 'ventilador de paredes 110V']
+    modelo.loc[0] = ['001', 'ventilador de parede 110V']
     modelo.loc[1] = ['002', 'luminária de teto 220V branca']
 
     try:
