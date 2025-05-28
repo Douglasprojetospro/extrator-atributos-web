@@ -2,27 +2,42 @@
     --primary-color: #4e73df;
     --primary-dark: #2e59d9;
     --secondary-color: #f8f9fc;
+    --text-color: #212529;
+    --light-gray: #f8f9fa;
+    --border-color: #dee2e6;
+    --shadow-color: rgba(58, 59, 69, 0.1);
 }
 
 body {
     background-color: var(--secondary-color);
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: var(--text-color);
+    margin: 0;
+    padding: 0;
 }
 
+/* Card */
 .card {
     border: none;
     border-radius: 0.5rem;
-    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+    box-shadow: 0 0.15rem 1.75rem 0 var(--shadow-color);
 }
 
+/* Cabeçalho do card */
 .card-header {
     border-radius: 0.5rem 0.5rem 0 0 !important;
+    background-color: var(--primary-color);
+    color: white;
 }
 
+/* Itens de variação */
 .variacao-item {
-    background-color: #f8f9fa;
+    background-color: var(--light-gray);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
 }
 
+/* Área da tabela com rolagem */
 .table-responsive {
     max-height: 70vh;
     overflow-y: auto;
@@ -32,25 +47,42 @@ body {
 .table {
     width: 100%;
     margin-bottom: 1rem;
-    color: #212529;
+    color: var(--text-color);
+    background-color: white;
+    border-collapse: collapse;
 }
 
+/* Células */
 .table th, .table td {
     padding: 0.75rem;
     vertical-align: top;
-    border-top: 1px solid #dee2e6;
+    border-top: 1px solid var(--border-color);
 }
 
+/* Cabeçalho da tabela */
 .table thead th {
     vertical-align: bottom;
-    border-bottom: 2px solid #dee2e6;
-    background-color: #f8f9fa;
+    border-bottom: 2px solid var(--border-color);
+    background-color: var(--light-gray);
+    font-weight: 600;
 }
 
+/* Separação entre corpos */
 .table tbody + tbody {
-    border-top: 2px solid #dee2e6;
+    border-top: 2px solid var(--border-color);
 }
 
+/* Linhas alternadas */
 .table-striped tbody tr:nth-of-type(odd) {
     background-color: rgba(0, 0, 0, 0.02);
 }
+
+/* Botões (caso queira personalizar futuramente)
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+.btn-primary:hover {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
+} */
