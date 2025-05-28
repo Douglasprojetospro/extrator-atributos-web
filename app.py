@@ -9,9 +9,8 @@ app = Flask(__name__)
 app.secret_key = 'sua_chave_secreta_aqui'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['CONFIG_FOLDER'] = 'configs'
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 
-# Garante que as pastas existem
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['CONFIG_FOLDER'], exist_ok=True)
 
@@ -42,7 +41,7 @@ class ExtratorAtributos:
             regex_variacoes = []
             for variacao in variacoes:
                 padroes_escaped = [re.escape(p) for p in variacao['padroes']]
-                regex = r'\b(' + '|'.join(padroes_escaped) + r')\b'
+                regex = r'\\b(' + '|'.join(padroes_escaped) + r')\\b'
                 regex_variacoes.append((regex, variacao['descricao']))
 
             self.dados_processados[atributo_nome] = ""
@@ -50,32 +49,26 @@ class ExtratorAtributos:
             for idx, row in self.dados_processados.iterrows():
                 descricao = str(row['Descrição']).lower()
                 resultado = None
-
                 for regex, desc_padrao in regex_variacoes:
                     match = re.search(regex, descricao, re.IGNORECASE)
                     if match:
                         resultado = self.formatar_resultado(
-                            descricao,
-                            tipo_retorno,
-                            atributo_nome,
-                            desc_padrao,
-                            match.group()
+                            descricao, tipo_retorno, atributo_nome, desc_padrao
                         )
                         break
-
                 self.dados_processados.at[idx, atributo_nome] = resultado if resultado else ""
 
         return self.dados_processados
 
-    def formatar_resultado(self, descricao_completa, tipo_retorno, nome_atributo, descricao_padrao, valor_encontrado):
+    def formatar_resultado(self, descricao_completa, tipo_retorno, nome_atributo, descricao_padrao):
         if tipo_retorno == "valor":
-            numeros = re.findall(r'\d+', valor_encontrado)
+            numeros = re.findall(r'\d+', descricao_completa)
             return numeros[0] if numeros else ""
         elif tipo_retorno == "texto":
             return descricao_padrao
         elif tipo_retorno == "completo":
             return f"{nome_atributo}: {descricao_padrao}"
-        return valor_encontrado
+        return descricao_completa
 
 extrator = ExtratorAtributos()
 
@@ -94,7 +87,7 @@ def upload_arquivo():
         flash('Nenhum arquivo selecionado', 'error')
         return redirect(url_for('index'))
 
-    if arquivo and allowed_file(arquivo.filename):
+    if allowed_file(arquivo.filename):
         filename = secure_filename(arquivo.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         arquivo.save(filepath)
@@ -107,7 +100,6 @@ def upload_arquivo():
 
             flash('Planilha carregada com sucesso!', 'success')
             return redirect(url_for('configuracao'))
-
         except Exception as e:
             flash(f'Erro ao carregar planilha: {str(e)}', 'error')
             return redirect(url_for('index'))
@@ -129,11 +121,9 @@ def configuracao():
                 'tipo_retorno': tipo_retorno,
                 'variacoes': variacoes
             }
-
-            return jsonify({'success': True, 'message': 'Atributo adicionado com sucesso!'})
+            return jsonify({'success': True})
         except Exception as e:
             return jsonify({'success': False, 'message': str(e)}), 400
-
     return render_template('configuracao.html')
 
 @app.route('/api/atributos', methods=['GET', 'DELETE'])
@@ -149,61 +139,41 @@ def gerenciar_atributos():
 
 @app.route('/salvar-configuracao', methods=['POST'])
 def salvar_configuracao():
-    try:
-        nome_config = request.form.get('nome_config')
-        if not nome_config:
-            flash('Nome da configuração é obrigatório', 'error')
-            return redirect(url_for('configuracao'))
-
-        filename = secure_filename(f"{nome_config}.json")
-        filepath = os.path.join(app.config['CONFIG_FOLDER'], filename)
-
-        with open(filepath, 'w') as f:
-            json.dump(extrator.exportar_configuracao(), f)
-
-        flash('Configuração salva com sucesso!', 'success')
+    nome_config = request.form.get('nome_config')
+    if not nome_config:
+        flash('Nome da configuração é obrigatório', 'error')
         return redirect(url_for('configuracao'))
-    except Exception as e:
-        flash(f'Erro ao salvar configuração: {str(e)}', 'error')
-        return redirect(url_for('configuracao'))
+
+    filename = secure_filename(f"{nome_config}.json")
+    filepath = os.path.join(app.config['CONFIG_FOLDER'], filename)
+    with open(filepath, 'w') as f:
+        json.dump(extrator.exportar_configuracao(), f)
+
+    flash('Configuração salva com sucesso!', 'success')
+    return redirect(url_for('configuracao'))
 
 @app.route('/carregar-configuracao', methods=['POST'])
 def carregar_configuracao():
-    try:
-        if 'config_file' not in request.files:
-            flash('Nenhum arquivo enviado', 'error')
-            return redirect(url_for('configuracao'))
-
-        arquivo = request.files['config_file']
-        if arquivo.filename == '':
-            flash('Nenhum arquivo selecionado', 'error')
-            return redirect(url_for('configuracao'))
-
-        if arquivo and allowed_config_file(arquivo.filename):
-            filename = secure_filename(arquivo.filename)
-            filepath = os.path.join(app.config['CONFIG_FOLDER'], filename)
-            arquivo.save(filepath)
-
-            with open(filepath, 'r') as f:
-                config = json.load(f)
-
-            extrator.carregar_configuracao(config)
-            flash('Configuração carregada com sucesso!', 'success')
-            return redirect(url_for('configuracao'))
-        else:
-            flash('Tipo de arquivo não permitido. Use apenas JSON', 'error')
-            return redirect(url_for('configuracao'))
-    except Exception as e:
-        flash(f'Erro ao carregar configuração: {str(e)}', 'error')
+    if 'config_file' not in request.files:
+        flash('Nenhum arquivo enviado', 'error')
         return redirect(url_for('configuracao'))
 
-@app.route('/listar-configuracoes', methods=['GET'])
-def listar_configuracoes():
-    try:
-        configs = [f[:-5] for f in os.listdir(app.config['CONFIG_FOLDER']) if f.endswith('.json')]
-        return jsonify(configs)
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    arquivo = request.files['config_file']
+    if arquivo.filename == '':
+        flash('Nenhum arquivo selecionado', 'error')
+        return redirect(url_for('configuracao'))
+
+    if allowed_config_file(arquivo.filename):
+        filename = secure_filename(arquivo.filename)
+        filepath = os.path.join(app.config['CONFIG_FOLDER'], filename)
+        arquivo.save(filepath)
+        with open(filepath, 'r') as f:
+            config = json.load(f)
+        extrator.carregar_configuracao(config)
+        flash('Configuração carregada com sucesso!', 'success')
+        return redirect(url_for('configuracao'))
+    flash('Tipo de arquivo não permitido. Use apenas JSON', 'error')
+    return redirect(url_for('configuracao'))
 
 @app.route('/processar', methods=['POST'])
 def processar():
@@ -220,7 +190,6 @@ def resultados():
     if extrator.dados_processados is None:
         flash('Nenhum resultado disponível. Processe os dados primeiro.', 'error')
         return redirect(url_for('configuracao'))
-
     dados_html = extrator.dados_processados.head(50).to_html(classes='table table-striped', index=False)
     return render_template('resultados.html', dados=dados_html)
 
@@ -229,7 +198,6 @@ def exportar():
     if extrator.dados_processados is None:
         flash('Nenhum resultado para exportar', 'error')
         return redirect(url_for('resultados'))
-
     try:
         output_path = os.path.join(app.config['UPLOAD_FOLDER'], 'resultados.xlsx')
         extrator.dados_processados.to_excel(output_path, index=False)
@@ -243,10 +211,6 @@ def gerar_modelo():
     modelo = pd.DataFrame(columns=['ID', 'Descrição'])
     modelo.loc[0] = ['001', 'ventilador de parede 110V']
     modelo.loc[1] = ['002', 'luminária de teto 220V branca']
-    modelo.loc[2] = ['003', 'lâmpada LED 9W branca']
-    modelo.loc[3] = ['004', 'tomada 20A 250V']
-    modelo.loc[4] = ['005', 'cabo flexível 2,5mm 750V']
-
     try:
         output_path = os.path.join(app.config['UPLOAD_FOLDER'], 'modelo.xlsx')
         modelo.to_excel(output_path, index=False)
@@ -262,4 +226,6 @@ def allowed_config_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() == 'json'
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
