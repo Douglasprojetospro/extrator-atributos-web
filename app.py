@@ -148,7 +148,9 @@ def configuracao():
         if file.endswith('.json'):
             config_files.append(file)
 
-    return render_template('configuracao.html', config_files=config_files)
+    return render_template('configuracao.html', 
+                         config_files=config_files,
+                         atributos=extrator.atributos)
 
 @app.route('/api/atributos', methods=['GET', 'DELETE', 'PUT'])
 def gerenciar_atributos():
