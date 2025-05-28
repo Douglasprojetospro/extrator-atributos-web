@@ -45,6 +45,11 @@ a:hover {
     color: var(--primary-dark);
 }
 
+a:focus {
+    outline: 2px dashed var(--primary-color);
+    outline-offset: 2px;
+}
+
 /* ------------------------- */
 /* Cards e Containers Gerais */
 /* ------------------------- */
@@ -60,7 +65,6 @@ a:hover {
     box-shadow: 0 0.15rem 1.75rem 0 var(--shadow-color);
     margin-bottom: 1.5rem;
     background-color: white;
-    overflow: hidden;
 }
 
 .card-header {
@@ -149,6 +153,7 @@ a:hover {
 .table-responsive {
     max-height: 70vh;
     overflow-y: auto;
+    overflow-x: auto;
     border-radius: 0.5rem;
 }
 
@@ -217,8 +222,7 @@ a:hover {
     font-size: 0.9rem;
     line-height: 1.5;
     border-radius: 0.35rem;
-    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, 
-                border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    transition: all 0.15s ease-in-out;
     cursor: pointer;
 }
 
@@ -246,7 +250,6 @@ a:hover {
 }
 
 .btn-secondary:hover {
-    color: #fff;
     background-color: #5a6268;
     border-color: #545b62;
 }
@@ -290,6 +293,14 @@ a:hover {
     background-color: var(--danger-color);
 }
 
+/* Botão de fechar em fundo escuro */
+.btn-close-white {
+    filter: invert(1);
+}
+
+/* ---------------------- */
+/* Alertas */
+/* ---------------------- */
 .alert {
     padding: 0.75rem 1.25rem;
     margin-bottom: 1rem;
@@ -366,6 +377,12 @@ a:hover {
     background-color: var(--light-gray) !important;
 }
 
+/* Link ativo no menu */
+.nav-link.active {
+    font-weight: bold;
+    border-bottom: 2px solid white;
+}
+
 /* ---------------------- */
 /* Responsividade */
 /* ---------------------- */
@@ -373,14 +390,19 @@ a:hover {
     .container {
         padding: 1rem;
     }
-    
+
     .card-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 0.5rem;
     }
-    
+
     .table-responsive {
         max-height: 60vh;
+    }
+
+    .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
     }
 }
