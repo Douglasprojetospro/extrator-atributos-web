@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Configuração de Atributos{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h2 class="h4 mb-0"><i class="bi bi-gear me-2"></i>Configurar Novo Atributo</h2>
+            </div>
+            <div class="card-body">
+                <form id="formAtributo">
+                    <div class="mb-3">
+                        <label for="nomeAtributo" class="form-label">Nome do Atributo</label>
+                        <input type="text" class="form-control" id="nomeAtributo" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Retorno</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipoRetorno" id="retornoValor" value="valor" checked>
+                            <label class="form-check-label" for="retornoValor">Valor (ex: '110')</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipoRetorno" id="retornoTexto" value="texto">
+                            <label class="form-check-label" for="retornoTexto">Texto Padrão (ex: '110V')</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipoRetorno" id="retornoCompleto" value="completo">
+                            <label class="form-check-label" for="retornoCompleto">Descrição Completa (ex: 'Voltagem: 110V')</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Variações e Padrões</label>
+                        <div id="variacoesContainer">
+                            <!-- Variações serão adicionadas aqui via JavaScript -->
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btnAddVariacao">
+                            <i class="bi bi-plus-circle me-1"></i>Adicionar Variação
+                        </button>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-2"></i>Salvar Atributo
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h2 class="h4 mb-0"><i class="bi bi-list-check me-2"></i>Atributos Configurados</h2>
+            </div>
+            <div class="card-body">
+                {% if atributos %}
+                    <ul class="list-group mb-3">
+                        {% for nome, config in atributos.items() %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ nome }}
+                                <span class="badge bg-primary rounded-pill">{{ config.variacoes|length }} var.</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    
+                    <form method="POST" action="{{ url_for('processar') }}">
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-play-circle me-2"></i>Processar Dados
+                        </button>
+                    </form>
+                {% else %}
+                    <div class="alert alert-info">
+                        Nenhum atributo configurado ainda. Adicione seu primeiro atributo ao lado.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// JavaScript para gerenciar a interface de configuração
+document.addEventListener('DOMContentLoaded', function() {
+    // Adicionar nova variação
+    document.getElementById('btnAddVariacao').addEventListener('click', function() {
+        const container = document.getElementById('variacoesContainer');
+        const index = container.children.length;
+        
+        const div = document.createElement('div');
+        div.className = 'variacao-item mb-3 p-3 border rounded';
+        div.innerHTML = `
+            <div class="d-flex justify-content-between mb-2">
+                <label class="form-label">Variação ${index + 1}</label>
+                <button type="button" class="btn btn-sm btn-outline-danger btn-remover-variacao">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+            <div class="mb-2">
+                <input type="text" class="form-control descricao" placeholder="Descrição (ex: 110V)" required>
+            </div>
+            <div>
+                <textarea class="form-control padroes" rows="2" placeholder="Padrões (um por linha)"></textarea>
+                <div class="form-text">Ex: 110V, 110 V, bivolt</div>
+            </div>
+        `;
+        
+        container.appendChild(div);
+        
+        // Adiciona evento para remover variação
+        div.querySelector('.btn-remover-variacao').addEventListener('click', function() {
+            container.removeChild(div);
+        });
+    });
+    
+    // Enviar formulário
+    document.getElementById('formAtributo').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const nome = document.getElementById('nomeAtributo').value;
+        const tipoRetorno = document.querySelector('input[name="tipoRetorno"]:checked').value;
+        const variacoes = [];
+        
+        // Coletar todas as variações
+        document.querySelectorAll('.variacao-item').forEach(item => {
+            const descricao = item.querySelector('.descricao').value;
+            const padroes = item.querySelector('.padroes').value.split('\n').map(p => p.trim()).filter(p => p);
+            
+            if (descricao && padroes.length > 0) {
+                variacoes.push({
+                    descricao: descricao,
+                    padroes: padroes
+                });
+            }
+        });
+        
+        if (variacoes.length === 0) {
+            alert('Adicione pelo menos uma variação com padrões');
+            return;
+        }
+        
+        // Enviar para o servidor
+        fetch("{{ url_for('configuracao') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                'nome_atributo': nome,
+                'tipo_retorno': tipoRetorno,
+                'variacoes': JSON.stringify(variacoes)
+            })
+        })
+        .then(response => {
+            if (response.redirected) {
+                window.location.href = response.url;
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    });
+    
+    // Adiciona primeira variação automaticamente
+    document.getElementById('btnAddVariacao').click();
+});
+</script>
+{% endblock %}
