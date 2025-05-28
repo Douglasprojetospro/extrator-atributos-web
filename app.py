@@ -30,7 +30,6 @@ class ExtratorAtributos:
     def processar_dados(self):
         if self.dados_originais is None:
             raise ValueError("Nenhum dado carregado para processamento")
-
         if not self.atributos:
             raise ValueError("Nenhum atributo configurado")
 
@@ -43,7 +42,7 @@ class ExtratorAtributos:
             regex_variacoes = []
             for variacao in variacoes:
                 padroes_escaped = [re.escape(p) for p in variacao['padroes']]
-                regex = r'\\b(' + '|'.join(padroes_escaped) + r')\\b'
+                regex = r'\b(' + '|'.join(padroes_escaped) + r')\b'
                 regex_variacoes.append((regex, variacao['descricao']))
 
             self.dados_processados[atributo_nome] = ""
@@ -70,7 +69,7 @@ class ExtratorAtributos:
 
     def formatar_resultado(self, descricao_completa, tipo_retorno, nome_atributo, descricao_padrao, valor_encontrado):
         if tipo_retorno == "valor":
-            numeros = re.findall(r'\\d+', valor_encontrado)
+            numeros = re.findall(r'\d+', valor_encontrado)
             return numeros[0] if numeros else ""
         elif tipo_retorno == "texto":
             return descricao_padrao
