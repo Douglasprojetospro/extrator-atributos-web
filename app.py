@@ -12,11 +12,9 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['CONFIG_FOLDER'] = 'configs'
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB
 
-# Garante que as pastas existam
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['CONFIG_FOLDER'], exist_ok=True)
 
-# Disponibiliza a variável 'now' para todos os templates
 @app.context_processor
 def inject_now():
     return {'now': datetime.now()}
@@ -48,11 +46,10 @@ class ExtratorAtributos:
             tipo_retorno = config['tipo_retorno']
             variacoes = config['variacoes']
 
-            # Prepara regex para cada variação
             regex_variacoes = []
             for variacao in variacoes:
                 padroes_escaped = [re.escape(p) for p in variacao['padroes']]
-                regex = r'\b(' + '|'.join(padroes_escaped) + r')\b'
+                regex = r'\\b(' + '|'.join(padroes_escaped) + r')\\b'
                 regex_variacoes.append((regex, variacao['descricao']))
 
             self.dados_processados[atributo_nome] = ""
@@ -65,12 +62,7 @@ class ExtratorAtributos:
                     match = re.search(regex, descricao, re.IGNORECASE)
                     if match:
                         resultado = self.formatar_resultado(
-                            descricao,
-                            tipo_retorno,
-                            atributo_nome,
-                            desc_padrao,
-                            match.group()
-                        )
+                            descricao, tipo_retorno, atributo_nome, desc_padrao, match.group())
                         break
 
                 self.dados_processados.at[idx, atributo_nome] = resultado if resultado else ""
@@ -150,7 +142,8 @@ def configuracao():
 
     return render_template('configuracao.html',
                            config_files=config_files,
-                           atributos=extrator.atributos)
+                           atributos=extrator.atributos,
+                           extrator=extrator)
 
 @app.route('/api/atributos', methods=['GET', 'DELETE', 'PUT'])
 def gerenciar_atributos():
@@ -229,7 +222,7 @@ def resultados():
         return redirect(url_for('configuracao'))
 
     dados_html = extrator.dados_processados.head(50).to_html(classes='table table-striped', index=False)
-    return render_template('resultados.html', dados=dados_html)
+    return render_template('resultados.html', dados_html=dados_html)
 
 @app.route('/exportar')
 def exportar():
