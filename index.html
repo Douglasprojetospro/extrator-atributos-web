@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Início{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h2 class="h4 mb-0"><i class="bi bi-upload me-2"></i>Upload de Planilha</h2>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('upload_arquivo') }}" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="arquivo" class="form-label">Selecione um arquivo Excel (.xlsx, .xls)</label>
+                        <input class="form-control" type="file" id="arquivo" name="arquivo" accept=".xlsx,.xls" required>
+                        <div class="form-text">O arquivo deve conter colunas 'ID' e 'Descrição'</div>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-cloud-upload me-2"></i>Enviar Arquivo
+                        </button>
+                    </div>
+                </form>
+
+                <hr class="my-4">
+
+                <div class="text-center">
+                    <p>Não tem um modelo de planilha?</p>
+                    <a href="{{ url_for('gerar_modelo') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-file-earmark-excel me-2"></i>Baixar Modelo
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
