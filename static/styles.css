@@ -43,14 +43,17 @@ body {
     margin-bottom: 0.75rem;
 }
 
-/* ------------------- */
-/* Tabelas e Listagens */
-/* ------------------- */
+/* ---------------------- */
+/* Área da Tabela com Scroll */
+/* ---------------------- */
 .table-responsive {
     max-height: 70vh;
     overflow-y: auto;
 }
 
+/* --------------------- */
+/* Estilo Geral da Tabela */
+/* --------------------- */
 .table {
     width: 100%;
     margin-bottom: 1rem;
@@ -81,15 +84,14 @@ body {
     background-color: rgba(0, 0, 0, 0.02);
 }
 
-/* -------------------- */
-/* Botões personalizados */
-/* -------------------- */
+/* ---------------------- */
+/* Botões Personalizados (Opcional) */
+/* ---------------------- */
 /*
 .btn-primary {
     background-color: var(--primary-color);
     border-color: var(--primary-color);
 }
-
 .btn-primary:hover {
     background-color: var(--primary-dark);
     border-color: var(--primary-dark);
