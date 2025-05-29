@@ -3,45 +3,45 @@
 {% block title %}Resultados do Processamento{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-10">
-        <h1 class="mb-4 text-center">Resultados do Processamento</h1>
-
-        <div class="card shadow-sm mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center bg-white">
-                <strong class="fs-5">Dados Processados</strong>
-                <div>
-                    <a href="{{ url_for('exportar') }}" class="btn btn-success btn-sm">
-                        <i class="bi bi-file-earmark-excel"></i> Exportar para Excel
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">Resultados do Processamento</h2>
+                <div class="btn-group">
+                    <a href="{{ url_for('exportar') }}" class="btn btn-success">
+                        <i class="bi bi-file-earmark-excel"></i> Exportar
                     </a>
-                    <a href="{{ url_for('gerar_modelo') }}" class="btn btn-outline-primary btn-sm ms-2">
-                        <i class="bi bi-download"></i> Baixar Modelo
+                    <a href="{{ url_for('configuracao') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Voltar
                     </a>
                 </div>
             </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    {{ dados_html|safe }}
+            
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> Mostrando as primeiras 50 linhas. Exporte para Excel para visualizar o arquivo completo.
+            </div>
+            
+            <div class="card shadow-sm">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        {{ dados_html|safe }}
+                    </div>
+                </div>
+                <div class="card-footer text-muted small">
+                    Processado em {{ now.strftime('%d/%m/%Y %H:%M') if now else '' }}
                 </div>
             </div>
-            <div class="card-footer text-muted small bg-white">
-                Mostrando as primeiras 50 linhas. Exporte para Excel para visualizar o arquivo completo.
+            
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
+                <a href="{{ url_for('exportar') }}" class="btn btn-success">
+                    <i class="bi bi-file-earmark-excel"></i> Exportar Planilha Completa
+                </a>
             </div>
-        </div>
-
-        <div class="d-flex justify-content-between mt-4">
-            <a href="{{ url_for('configuracao') }}" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left"></i> Voltar para Configuração
-            </a>
-            <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
-                <i class="bi bi-house"></i> Ir para Início
-            </a>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
 <script>
 $(document).ready(function() {
     // Aplica DataTables na tabela
