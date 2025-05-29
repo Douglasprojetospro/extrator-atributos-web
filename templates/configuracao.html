@@ -1,597 +1,473 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2>Configuração de Atributos</h2>
+    
+    <!-- Formulário para adicionar novo atributo -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Adicionar Novo Atributo</h5>
+        </div>
+        <div class="card-body">
+            <form id="form-atributo">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="nome-atributo">Nome do Atributo</label>
+                            <input type="text" class="form-control" id="nome-atributo" required>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="tipo-retorno">Tipo de Retorno</label>
+                            <select class="form-control" id="tipo-retorno" required>
+                                <option value="texto">Texto Fixo</option>
+                                <option value="valor">Valor Numérico</option>
+                                <option value="completo">Texto Completo</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="variacoes-container">
+                    <h5>Variações</h5>
+                    <div class="variacao-item mb-3 p-3 border">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Descrição</label>
+                                    <input type="text" class="form-control variacao-descricao" required>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Prioridade (maior = mais importante)</label>
+                                    <input type="number" class="form-control variacao-prioridade" value="1" required>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="form-group">
+                                    <label>Padrões (separados por vírgula)</label>
+                                    <input type="text" class="form-control variacao-padroes" required>
+                                    <small class="form-text text-muted">Exemplo: 110v,110V,127v,127V</small>
+                                </div>
+                            </div>
+                            <div class="col-md-1 d-flex align-items-end">
+                                <button type="button" class="btn btn-danger btn-remover-variacao">×</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="button" id="btn-add-variacao" class="btn btn-secondary mb-3">+ Adicionar Variação</button>
+                <button type="submit" class="btn btn-primary">Salvar Atributo</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de atributos configurados -->
+    <div class="card">
+        <div class="card-header">
+            <h5>Atributos Configurados</h5>
+        </div>
+        <div class="card-body">
+            <div id="atributos-list">
+                {% if atributos %}
+                    {% for nome, config in atributos.items() %}
+                    <div class="atributo-item mb-3 p-3 border" data-atributo="{{ nome }}">
+                        <div class="d-flex justify-content-between">
+                            <h5>{{ nome }} ({{ config['tipo_retorno'] }})</h5>
+                            <div>
+                                <button class="btn btn-sm btn-warning btn-editar" data-atributo="{{ nome }}">Editar</button>
+                                <button class="btn btn-sm btn-danger btn-remover" data-atributo="{{ nome }}">Remover</button>
+                            </div>
+                        </div>
+                        <ul class="list-group mt-2">
+                            {% for variacao in config['variacoes'] %}
+                            <li class="list-group-item">
+                                <strong>{{ variacao['descricao'] }}</strong> 
+                                (Prioridade: {{ variacao.get('prioridade', '1') }})
+                                <br>
+                                Padrões: {{ variacao['padroes']|join(', ') }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p>Nenhum atributo configurado ainda.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Gerenciamento de configurações salvas -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5>Gerenciar Configurações Salvas</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <form action="{{ url_for('salvar_configuracao') }}" method="POST">
+                        <div class="form-group">
+                            <label for="nome-arquivo">Salvar Configuração Atual</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="nome-arquivo" name="nome_arquivo" placeholder="nome-da-configuracao" required>
+                                <div class="input-group-append">
+                                    <button class="btn btn-success" type="submit">Salvar</button>
+                                </div>
+                            </div>
+                            <small class="form-text text-muted">Será salvo como .json</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="col-md-6">
+                    <form action="{{ url_for('carregar_configuracao') }}" method="POST">
+                        <div class="form-group">
+                            <label for="config-file">Carregar Configuração</label>
+                            <div class="input-group">
+                                <select class="form-control" id="config-file" name="config_file" required>
+                                    <option value="">Selecione um arquivo...</option>
+                                    {% for file in config_files %}
+                                    <option value="{{ file }}">{{ file }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="input-group-append">
+                                    <button class="btn btn-primary" type="submit">Carregar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para edição -->
+<div class="modal fade" id="editarModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Atributo</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="modal-editar-body">
+                <!-- Conteúdo dinâmico -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    // Adicionar nova variação
+    $('#btn-add-variacao').click(function() {
+        const newItem = `
+        <div class="variacao-item mb-3 p-3 border">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label>Descrição</label>
+                        <input type="text" class="form-control variacao-descricao" required>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label>Prioridade (maior = mais importante)</label>
+                        <input type="number" class="form-control variacao-prioridade" value="1" required>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <div class="form-group">
+                        <label>Padrões (separados por vírgula)</label>
+                        <input type="text" class="form-control variacao-padroes" required>
+                    </div>
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-danger btn-remover-variacao">×</button>
+                </div>
+            </div>
+        </div>`;
+        $('#variacoes-container').append(newItem);
+    });
+
+    // Remover variação
+    $(document).on('click', '.btn-remover-variacao', function() {
+        if($('.variacao-item').length > 1) {
+            $(this).closest('.variacao-item').remove();
+        } else {
+            alert('Pelo menos uma variação é necessária.');
+        }
+    });
+
+    // Formulário de atributo
+    $('#form-atributo').submit(function(e) {
+        e.preventDefault();
+        
+        const nome = $('#nome-atributo').val();
+        const tipoRetorno = $('#tipo-retorno').val();
+        
+        const variacoes = [];
+        $('.variacao-item').each(function() {
+            const descricao = $(this).find('.variacao-descricao').val();
+            const prioridade = parseInt($(this).find('.variacao-prioridade').val());
+            const padroes = $(this).find('.variacao-padroes').val().split(',').map(p => p.trim());
+            
+            variacoes.push({
+                descricao: descricao,
+                prioridade: prioridade,
+                padroes: padroes
+            });
+        });
+        
+        $.ajax({
+            url: "{{ url_for('configuracao') }}",
+            method: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({
+                nome: nome,
+                tipo_retorno: tipoRetorno,
+                variacoes: variacoes
+            }),
+            success: function(response) {
+                if(response.success) {
+                    location.reload();
+                } else {
+                    alert('Erro: ' + response.message);
+                }
+            }
+        });
+    });
+
+    // Editar atributo
+    $(document).on('click', '.btn-editar', function() {
+        const nomeAtributo = $(this).data('atributo');
+        
+        $.get("{{ url_for('gerenciar_atributos') }}?nome=" + nomeAtributo, function(data) {
+            const modalBody = `
+            <form id="form-editar-atributo">
+                <input type="hidden" id="edit-nome-atributo" value="${nomeAtributo}">
+                
+                <div class="form-group">
+                    <label for="edit-tipo-retorno">Tipo de Retorno</label>
+                    <select class="form-control" id="edit-tipo-retorno" required>
+                        <option value="texto" ${data[nomeAtributo].tipo_retorno === 'texto' ? 'selected' : ''}>Texto Fixo</option>
+                        <option value="valor" ${data[nomeAtributo].tipo_retorno === 'valor' ? 'selected' : ''}>Valor Numérico</option>
+                        <option value="completo" ${data[nomeAtributo].tipo_retorno === 'completo' ? 'selected' : ''}>Texto Completo</option>
+                    </select>
+                </div>
+                
+                <div id="edit-variacoes-container">
+                    <h5>Variações</h5>
+                    ${data[nomeAtributo].variacoes.map(variacao => `
+                    <div class="variacao-item mb-3 p-3 border">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Descrição</label>
+                                    <input type="text" class="form-control variacao-descricao" value="${variacao.descricao}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Prioridade</label>
+                                    <input type="number" class="form-control variacao-prioridade" value="${variacao.prioridade || 1}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="form-group">
+                                    <label>Padrões (separados por vírgula)</label>
+                                    <input type="text" class="form-control variacao-padroes" value="${variacao.padroes.join(', ')}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-1 d-flex align-items-end">
+                                <button type="button" class="btn btn-danger btn-remover-variacao">×</button>
+                            </div>
+                        </div>
+                    </div>
+                    `).join('')}
+                </div>
+                
+                <button type="button" id="btn-add-edit-variacao" class="btn btn-secondary mb-3">+ Adicionar Variação</button>
+                <button type="submit" class="btn btn-primary">Atualizar Atributo</button>
+            </form>`;
+            
+            $('#modal-editar-body').html(modalBody);
+            $('#editarModal').modal('show');
+        });
+    });
+
+    // Remover atributo
+    $(document).on('click', '.btn-remover', function() {
+        if(confirm('Tem certeza que deseja remover este atributo?')) {
+            const nomeAtributo = $(this).data('atributo');
+            
+            $.ajax({
+                url: "{{ url_for('gerenciar_atributos') }}?nome=" + nomeAtributo,
+                method: "DELETE",
+                success: function(response) {
+                    if(response.success) {
+                        location.reload();
+                    } else {
+                        alert('Erro ao remover atributo');
+                    }
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock %}
+2. resultados.html - Melhorar exibição dos resultados
+html
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2>Resultados do Processamento</h2>
+    
+    <div class="alert alert-info">
+        <p>Mostrando as primeiras 50 linhas. Para ver todos os resultados, exporte a planilha completa.</p>
+    </div>
+    
+    <div class="mb-3">
+        <a href="{{ url_for('exportar') }}" class="btn btn-success">
+            <i class="fas fa-file-excel"></i> Exportar Planilha Completa
+        </a>
+        <a href="{{ url_for('configuracao') }}" class="btn btn-secondary">
+            <i class="fas fa-cog"></i> Voltar para Configuração
+        </a>
+    </div>
+    
+    <div class="table-responsive">
+        {{ dados_html|safe }}
+    </div>
+    
+    <div class="mt-3">
+        <a href="{{ url_for('exportar') }}" class="btn btn-success">
+            <i class="fas fa-file-excel"></i> Exportar Planilha Completa
+        </a>
+    </div>
+</div>
+{% endblock %}
+3. index.html - Melhorar upload inicial
+html
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">Processamento de Planilhas</h2>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('upload_arquivo') }}" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="arquivo">Selecione a planilha para processar</label>
+                            <div class="custom-file">
+                                <input type="file" class="custom-file-input" id="arquivo" name="arquivo" accept=".xlsx,.xls" required>
+                                <label class="custom-file-label" for="arquivo">Escolha um arquivo Excel (.xlsx, .xls)</label>
+                            </div>
+                            <small class="form-text text-muted">
+                                A planilha deve conter colunas "ID" e "Descrição"
+                            </small>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-upload"></i> Enviar Planilha
+                            </button>
+                            <a href="{{ url_for('gerar_modelo') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-download"></i> Baixar Modelo
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Instruções</h5>
+                </div>
+                <div class="card-body">
+                    <ol>
+                        <li>Faça upload de uma planilha Excel contendo colunas "ID" e "Descrição"</li>
+                        <li>Configure os atributos que deseja extrair das descrições</li>
+                        <li>Defina as variações e padrões para cada atributo</li>
+                        <li>Processe a planilha e visualize os resultados</li>
+                        <li>Exporte a planilha com os resultados</li>
+                    </ol>
+                    <p class="mb-0">Você pode salvar e carregar configurações para uso futuro.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Mostrar nome do arquivo selecionado
+document.querySelector('.custom-file-input').addEventListener('change', function(e) {
+    var fileName = document.getElementById("arquivo").files[0].name;
+    var nextSibling = e.target.nextElementSibling;
+    nextSibling.innerText = fileName;
+});
+</script>
+{% endblock %}
+4. base.html - Template base com Bootstrap e Font Awesome
+html
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configuração de Atributos</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Processamento de Planilhas</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
     <style>
-        .variation-item { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
-        .pattern-item { display: inline-block; margin-right: 5px; margin-bottom: 5px; }
-        .file-upload-container { border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 5px; }
-        .file-upload-container:hover { border-color: #0d6efd; }
-        .required-field::after { content: " *"; color: red; }
+        body {
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .card-header {
+            font-weight: 500;
+        }
+        .variacao-item {
+            background-color: #f8f9fa;
+        }
     </style>
 </head>
 <body>
-    <div class="container mt-5">
-        <h1 class="mb-4">Configuração de Atributos</h1>
-        
+    <div class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
-
-        <!-- Seção de Upload de Arquivo (se não houver dados carregados) -->
-        {% if extrator.dados_originais is none or extrator.dados_originais.empty %}
-        <div class="card mb-4">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">Carregar Planilha</h5>
-            </div>
-            <div class="card-body">
-                <form action="{{ url_for('upload_arquivo') }}" method="POST" enctype="multipart/form-data" id="upload-form">
-                    <div class="file-upload-container mb-3">
-                        <input type="file" class="form-control d-none" id="arquivo" name="arquivo" accept=".xlsx,.xls" required>
-                        <label for="arquivo" class="btn btn-outline-primary">
-                            <i class="bi bi-upload"></i> Selecione um arquivo Excel
-                        </label>
-                        <p class="mt-2 mb-0 text-muted">Arquivos suportados: .xlsx, .xls</p>
-                        <div id="file-name" class="mt-2 fw-bold"></div>
-                    </div>
-                    <div class="d-flex justify-content-between">
-                        <button type="submit" class="btn btn-primary" id="btn-upload">
-                            <i class="bi bi-upload"></i> Carregar Planilha
-                        </button>
-                        <a href="{{ url_for('gerar_modelo') }}" class="btn btn-outline-secondary">
-                            <i class="bi bi-download"></i> Baixar Modelo
-                        </a>
-                    </div>
-                </form>
-            </div>
-        </div>
-        {% else %}
-        <div class="alert alert-success">
-            <i class="bi bi-check-circle"></i> Planilha carregada com sucesso! 
-            <strong>{{ extrator.dados_originais.shape[0] }}</strong> registros encontrados.
-            <a href="{{ url_for('index') }}" class="float-end btn btn-sm btn-outline-danger">
-                <i class="bi bi-x-circle"></i> Carregar nova planilha
-            </a>
-        </div>
-        {% endif %}
-
-        <!-- Restante do código permanece igual -->
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">Adicionar Novo Atributo</h5>
-                    </div>
-                    <div class="card-body">
-                        <form id="form-atributo">
-                            <div class="mb-3">
-                                <label for="nome-atributo" class="form-label required-field">Nome do Atributo</label>
-                                <input type="text" class="form-control" id="nome-atributo" required>
-                                <div class="form-text">Exemplo: Voltagem, Cor, Potência</div>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label required-field">Tipo de Retorno</label>
-                                <select class="form-select" id="tipo-retorno" required>
-                                    <option value="">Selecione...</option>
-                                    <option value="valor">Valor (ex: '110')</option>
-                                    <option value="texto">Texto Padrão (ex: '110V')</option>
-                                    <option value="completo">Descrição Completa (ex: 'Voltagem: 110V')</option>
-                                </select>
-                                <div class="form-text">Como o valor será exibido nos resultados</div>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label required-field">Variações</label>
-                                <div id="variacoes-container">
-                                    <!-- Variações serão adicionadas aqui -->
-                                </div>
-                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btn-add-variacao">
-                                    <i class="bi bi-plus-circle"></i> Adicionar Variação
-                                </button>
-                                <div class="form-text">Adicione variações em ordem de prioridade (a primeira correspondência será usada)</div>
-                            </div>
-                            
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-save"></i> Registrar Atributo
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header bg-secondary text-white">
-                        <h5 class="mb-0">Gerenciar Configurações</h5>
-                    </div>
-                    <div class="card-body">
-                        <form action="{{ url_for('salvar_configuracao') }}" method="POST" class="mb-3">
-                            <div class="input-group">
-                                <input type="text" class="form-control" name="nome_arquivo" placeholder="Nome do arquivo de configuração" required>
-                                <button type="submit" class="btn btn-success">
-                                    <i class="bi bi-save"></i> Salvar Configuração
-                                </button>
-                            </div>
-                            <div class="form-text">A configuração será salva como um arquivo .json</div>
-                        </form>
-                        
-                        <form action="{{ url_for('carregar_configuracao') }}" method="POST">
-                            <div class="input-group mb-3">
-                                <select class="form-select" name="config_file" required>
-                                    <option value="">Selecione uma configuração...</option>
-                                    {% for file in config_files %}
-                                        <option value="{{ file }}">{{ file }}</option>
-                                    {% endfor %}
-                                </select>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="bi bi-folder2-open"></i> Carregar Configuração
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Atributos Configurados</h5>
-                        <div>
-                            {% if not (extrator.dados_originais is none or extrator.dados_originais.empty) %}
-                            <button class="btn btn-light btn-sm" id="btn-processar">
-                                <i class="bi bi-gear"></i> Processar Dados
-                            </button>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div id="atributos-lista">
-                            {% if not extrator.atributos %}
-                            <div class="alert alert-info">
-                                <i class="bi bi-info-circle"></i> Nenhum atributo configurado ainda.
-                                {% if extrator.dados_originais is none or extrator.dados_originais.empty %}
-                                <div class="mt-2">Carregue uma planilha primeiro para começar.</div>
-                                {% endif %}
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        
+        {% block content %}{% endblock %}
     </div>
 
-    <!-- Modal para edição de atributo -->
-    <div class="modal fade" id="editarAtributoModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Editar Atributo</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" id="modal-editar-conteudo">
-                    <!-- Conteúdo será carregado via JavaScript -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Ícones Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Variável de template para variação
-        const variationTemplate = `
-            <div class="variation-item">
-                <div class="d-flex justify-content-between mb-2">
-                    <input type="text" class="form-control form-control-sm variation-desc" placeholder="Descrição da variação" required>
-                    <button type="button" class="btn btn-sm btn-outline-danger ms-2 remove-variation">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </div>
-                <div class="variation-patterns">
-                    <input type="text" class="form-control form-control-sm mb-2 new-pattern" placeholder="Novo padrão (ex: 110V, 220V)">
-                    <button type="button" class="btn btn-sm btn-outline-secondary add-pattern">
-                        <i class="bi bi-plus"></i> Adicionar Padrão
-                    </button>
-                    <div class="patterns-list mt-2"></div>
-                </div>
-            </div>
-        `;
-
-        // Mostrar nome do arquivo selecionado
-        document.getElementById('arquivo')?.addEventListener('change', function(e) {
-            const fileName = document.getElementById('file-name');
-            if (this.files.length > 0) {
-                fileName.textContent = this.files[0].name;
-            } else {
-                fileName.textContent = '';
-            }
-        });
-
-        // Adiciona uma nova variação
-        document.getElementById('btn-add-variacao')?.addEventListener('click', function() {
-            const container = document.getElementById('variacoes-container');
-            const div = document.createElement('div');
-            div.innerHTML = variationTemplate;
-            container.appendChild(div);
-            
-            // Configura eventos para os novos elementos
-            setupVariationEvents(div);
-        });
-
-        // Configura eventos para uma variação
-        function setupVariationEvents(variationElement) {
-            // Remover variação
-            variationElement.querySelector('.remove-variation').addEventListener('click', function() {
-                if (confirm('Tem certeza que deseja remover esta variação?')) {
-                    variationElement.remove();
-                }
-            });
-            
-            // Adicionar padrão
-            variationElement.querySelector('.add-pattern').addEventListener('click', function() {
-                const patternInput = variationElement.querySelector('.new-pattern');
-                const pattern = patternInput.value.trim();
-                
-                if (pattern) {
-                    const patternsList = variationElement.querySelector('.patterns-list');
-                    const patternItem = document.createElement('span');
-                    patternItem.className = 'pattern-item badge bg-light text-dark';
-                    patternItem.innerHTML = `
-                        ${pattern}
-                        <input type="hidden" name="patterns" value="${pattern}">
-                        <button type="button" class="btn-close btn-close-white btn-sm ms-1 remove-pattern"></button>
-                    `;
-                    patternsList.appendChild(patternItem);
-                    patternInput.value = '';
-                    
-                    // Remover padrão
-                    patternItem.querySelector('.remove-pattern').addEventListener('click', function() {
-                        patternItem.remove();
-                    });
-                }
-            });
-            
-            // Permitir adicionar padrão com Enter
-            variationElement.querySelector('.new-pattern').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    variationElement.querySelector('.add-pattern').click();
-                }
-            });
-        }
-
-        // Formulário de atributo
-        document.getElementById('form-atributo')?.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const nomeAtributo = document.getElementById('nome-atributo').value.trim();
-            const tipoRetorno = document.getElementById('tipo-retorno').value;
-            const variacoes = [];
-            
-            // Coletar todas as variações
-            document.querySelectorAll('.variation-item').forEach(variation => {
-                const descricao = variation.querySelector('.variation-desc').value.trim();
-                const padroes = Array.from(variation.querySelectorAll('input[name="patterns"]')).map(input => input.value.trim());
-                
-                if (descricao && padroes.length > 0) {
-                    variacoes.push({
-                        descricao: descricao,
-                        padroes: padroes
-                    });
-                }
-            });
-            
-            if (!nomeAtributo) {
-                alert('O nome do atributo é obrigatório!');
-                return;
-            }
-            
-            if (!tipoRetorno) {
-                alert('Selecione um tipo de retorno!');
-                return;
-            }
-            
-            if (variacoes.length === 0) {
-                alert('Adicione pelo menos uma variação com padrões!');
-                return;
-            }
-            
-            // Enviar para o servidor
-            fetch("{{ url_for('configuracao') }}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    nome: nomeAtributo,
-                    tipo_retorno: tipoRetorno,
-                    variacoes: variacoes
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Atributo adicionado com sucesso!');
-                    document.getElementById('form-atributo').reset();
-                    document.getElementById('variacoes-container').innerHTML = '';
-                    loadAtributos();
-                } else {
-                    alert('Erro: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Erro ao adicionar atributo');
-            });
-        });
-
-        // Carrega a lista de atributos
-        function loadAtributos() {
-            fetch("{{ url_for('gerenciar_atributos') }}")
-                .then(response => response.json())
-                .then(data => {
-                    const container = document.getElementById('atributos-lista');
-                    
-                    if (Object.keys(data).length === 0) {
-                        container.innerHTML = `
-                            <div class="alert alert-info">
-                                <i class="bi bi-info-circle"></i> Nenhum atributo configurado ainda.
-                                {% if extrator.dados_originais is none or extrator.dados_originais.empty %}
-                                <div class="mt-2">Carregue uma planilha primeiro para começar.</div>
-                                {% endif %}
-                            </div>
-                        `;
-                        return;
-                    }
-                    
-                    let html = '<div class="list-group">';
-                    for (const [nome, config] of Object.entries(data)) {
-                        html += `
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong>${nome}</strong> 
-                                    <span class="badge bg-secondary ms-2">${config.tipo_retorno}</span>
-                                    <div class="text-muted small mt-1">
-                                        <span class="badge bg-light text-dark">
-                                            ${config.variacoes.length} ${config.variacoes.length === 1 ? 'variação' : 'variações'}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div>
-                                    <button class="btn btn-sm btn-outline-primary me-1 edit-atributo" data-nome="${nome}">
-                                        <i class="bi bi-pencil"></i> Editar
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger delete-atributo" data-nome="${nome}">
-                                        <i class="bi bi-trash"></i> Remover
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    }
-                    html += '</div>';
-                    container.innerHTML = html;
-                    
-                    // Configurar eventos para os botões
-                    document.querySelectorAll('.delete-atributo').forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            if (confirm(`Tem certeza que deseja remover o atributo "${this.dataset.nome}"?`)) {
-                                fetch("{{ url_for('gerenciar_atributos') }}?nome=" + encodeURIComponent(this.dataset.nome), {
-                                    method: 'DELETE'
-                                })
-                                .then(response => response.json())
-                                .then(data => {
-                                    if (data.success) {
-                                        loadAtributos();
-                                    } else {
-                                        alert('Erro ao remover atributo');
-                                    }
-                                });
-                            }
-                        });
-                    });
-                    
-                    document.querySelectorAll('.edit-atributo').forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            const nome = this.dataset.nome;
-                            const config = data[nome];
-                            
-                            // Preencher modal com os dados do atributo
-                            let modalContent = `
-                                <form id="form-editar-atributo">
-                                    <input type="hidden" name="nome" value="${nome}">
-                                    
-                                    <div class="mb-3">
-                                        <label class="form-label">Tipo de Retorno</label>
-                                        <select class="form-select" name="tipo_retorno" required>
-                                            <option value="valor" ${config.tipo_retorno === 'valor' ? 'selected' : ''}>Valor (ex: '110')</option>
-                                            <option value="texto" ${config.tipo_retorno === 'texto' ? 'selected' : ''}>Texto Padrão (ex: '110V')</option>
-                                            <option value="completo" ${config.tipo_retorno === 'completo' ? 'selected' : ''}>Descrição Completa (ex: 'Voltagem: 110V')</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="mb-3">
-                                        <label class="form-label">Variações</label>
-                                        <div id="modal-variacoes-container">
-                            `;
-                            
-                            // Adicionar variações ao modal
-                            config.variacoes.forEach(variacao => {
-                                modalContent += `
-                                    <div class="variation-item">
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <input type="text" class="form-control form-control-sm variation-desc" 
-                                                   value="${variacao.descricao}" placeholder="Descrição da variação" required>
-                                            <button type="button" class="btn btn-sm btn-outline-danger ms-2 remove-variation">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </div>
-                                        <div class="variation-patterns">
-                                            <input type="text" class="form-control form-control-sm mb-2 new-pattern" placeholder="Novo padrão">
-                                            <button type="button" class="btn btn-sm btn-outline-secondary add-pattern">
-                                                <i class="bi bi-plus"></i> Adicionar Padrão
-                                            </button>
-                                            <div class="patterns-list mt-2">
-                                `;
-                                
-                                // Adicionar padrões existentes
-                                variacao.padroes.forEach(padrao => {
-                                    modalContent += `
-                                        <span class="pattern-item badge bg-light text-dark">
-                                            ${padrao}
-                                            <input type="hidden" name="patterns" value="${padrao}">
-                                            <button type="button" class="btn-close btn-close-white btn-sm ms-1 remove-pattern"></button>
-                                        </span>
-                                    `;
-                                });
-                                
-                                modalContent += `
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
-                            });
-                            
-                            modalContent += `
-                                        </div>
-                                        <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btn-modal-add-variacao">
-                                            <i class="bi bi-plus-circle"></i> Adicionar Variação
-                                        </button>
-                                    </div>
-                                    
-                                    <div class="d-flex justify-content-end">
-                                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">
-                                            <i class="bi bi-x-circle"></i> Cancelar
-                                        </button>
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="bi bi-save"></i> Salvar Alterações
-                                        </button>
-                                    </div>
-                                </form>
-                            `;
-                            
-                            document.getElementById('modal-editar-conteudo').innerHTML = modalContent;
-                            
-                            // Configurar eventos no modal
-                            document.querySelectorAll('.variation-item').forEach(variation => {
-                                setupVariationEvents(variation);
-                            });
-                            
-                            document.getElementById('btn-modal-add-variacao').addEventListener('click', function() {
-                                const container = document.getElementById('modal-variacoes-container');
-                                const div = document.createElement('div');
-                                div.innerHTML = variationTemplate;
-                                container.appendChild(div);
-                                setupVariationEvents(div);
-                            });
-                            
-                            // Formulário de edição
-                            document.getElementById('form-editar-atributo').addEventListener('submit', function(e) {
-                                e.preventDefault();
-                                
-                                const formData = new FormData(this);
-                                const tipoRetorno = formData.get('tipo_retorno');
-                                const variacoes = [];
-                                
-                                // Coletar variações do modal
-                                document.querySelectorAll('#modal-variacoes-container .variation-item').forEach(variation => {
-                                    const descricao = variation.querySelector('.variation-desc').value.trim();
-                                    const padroes = Array.from(variation.querySelectorAll('input[name="patterns"]')).map(input => input.value.trim());
-                                    
-                                    if (descricao && padroes.length > 0) {
-                                        variacoes.push({
-                                            descricao: descricao,
-                                            padroes: padroes
-                                        });
-                                    }
-                                });
-                                
-                                if (variacoes.length === 0) {
-                                    alert('O atributo deve ter pelo menos uma variação com padrões!');
-                                    return;
-                                }
-                                
-                                // Enviar para o servidor
-                                fetch("{{ url_for('gerenciar_atributos') }}", {
-                                    method: 'PUT',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                    },
-                                    body: JSON.stringify({
-                                        nome: nome,
-                                        tipo_retorno: tipoRetorno,
-                                        variacoes: variacoes
-                                    })
-                                })
-                                .then(response => response.json())
-                                .then(data => {
-                                    if (data.success) {
-                                        alert('Atributo atualizado com sucesso!');
-                                        loadAtributos();
-                                        bootstrap.Modal.getInstance(document.getElementById('editarAtributoModal')).hide();
-                                    } else {
-                                        alert('Erro: ' + data.message);
-                                    }
-                                });
-                            });
-                            
-                            // Mostrar modal
-                            const modal = new bootstrap.Modal(document.getElementById('editarAtributoModal'));
-                            modal.show();
-                        });
-                    });
-                });
-        }
-
-        // Botão para processar dados
-        document.getElementById('btn-processar')?.addEventListener('click', function() {
-            if (Object.keys({{ extrator.atributos|tojson|safe }}).length === 0) {
-                alert('Adicione pelo menos um atributo antes de processar!');
-                return;
-            }
-            
-            this.disabled = true;
-            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processando...';
-            
-            fetch("{{ url_for('processar') }}", {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    window.location.href = "{{ url_for('resultados') }}";
-                } else {
-                    alert('Erro ao processar: ' + data.error);
-                    this.disabled = false;
-                    this.innerHTML = '<i class="bi bi-gear"></i> Processar Dados';
-                }
-            })
-            .catch(error => {
-                alert('Erro ao processar dados');
-                this.disabled = false;
-                this.innerHTML = '<i class="bi bi-gear"></i> Processar Dados';
-            });
-        });
-
-        // Carregar atributos ao iniciar
-        document.addEventListener('DOMContentLoaded', function() {
-            loadAtributos();
-            
-            // Adiciona uma variação inicial se o container estiver vazio
-            if (document.getElementById('variacoes-container') && document.getElementById('variacoes-container').children.length === 0) {
-                document.getElementById('btn-add-variacao').click();
-            }
-        });
-    </script>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    {% block scripts %}{% endblock %}
 </body>
 </html>
