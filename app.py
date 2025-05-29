@@ -46,8 +46,13 @@ class ExtratorAtributos:
             tipo_retorno = config['tipo_retorno']
             variacoes = config['variacoes']
 
+            # Ordena as variações pela prioridade (se existir)
+            variacoes_ordenadas = sorted(variacoes, 
+                                         key=lambda x: x.get('prioridade', 0), 
+                                         reverse=True)
+
             regex_variacoes = []
-            for variacao in variacoes:
+            for variacao in variacoes_ordenadas:
                 padroes_escaped = [re.escape(p) for p in variacao['padroes']]
                 regex = r'\b(' + '|'.join(padroes_escaped) + r')\b'
                 regex_variacoes.append((regex, variacao['descricao']))
@@ -63,7 +68,7 @@ class ExtratorAtributos:
                     if match:
                         resultado = self.formatar_resultado(
                             descricao, tipo_retorno, desc_padrao, match.group())
-                        break
+                        break  # Para na primeira correspondência devido à prioridade
 
                 self.dados_processados.at[idx, atributo_nome] = resultado if resultado else ""
 
@@ -129,6 +134,11 @@ def configuracao():
             if not nome or not tipo_retorno or not variacoes:
                 return jsonify({'success': False, 'message': 'Dados incompletos'}), 400
 
+            # Adiciona prioridade se não existir
+            for i, variacao in enumerate(variacoes):
+                if 'prioridade' not in variacao:
+                    variacao['prioridade'] = len(variacoes) - i
+
             extrator.atributos[nome] = {
                 'tipo_retorno': tipo_retorno,
                 'variacoes': variacoes
@@ -162,9 +172,15 @@ def gerenciar_atributos():
             if nome not in extrator.atributos:
                 return jsonify({'success': False, 'message': 'Atributo não encontrado'}), 404
 
+            # Atualiza prioridades se necessário
+            variacoes = data.get('variacoes')
+            for i, variacao in enumerate(variacoes):
+                if 'prioridade' not in variacao:
+                    variacao['prioridade'] = len(variacoes) - i
+
             extrator.atributos[nome] = {
                 'tipo_retorno': data.get('tipo_retorno'),
-                'variacoes': data.get('variacoes')
+                'variacoes': variacoes
             }
             return jsonify({'success': True, 'message': 'Atributo atualizado com sucesso!'})
         except Exception as e:
@@ -211,10 +227,13 @@ def processar():
         if not extrator.atributos:
             return jsonify({'success': False, 'error': "Nenhum atributo configurado. Adicione pelo menos um atributo antes de processar."}), 400
 
+        if extrator.dados_originais is None:
+            return jsonify({'success': False, 'error': "Nenhum dado carregado para processamento. Faça upload de uma planilha primeiro."}), 400
+
         dados_processados = extrator.processar_dados()
         output_path = os.path.join(app.config['UPLOAD_FOLDER'], 'resultados_processados.xlsx')
         dados_processados.to_excel(output_path, index=False)
-        return jsonify({'success': True})
+        return jsonify({'success': True, 'message': 'Processamento concluído com sucesso!'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
