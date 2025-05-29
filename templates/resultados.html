@@ -1,61 +1,64 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resultados do Processamento</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .table-container {
-            max-height: 500px;
-            overflow-y: auto;
-        }
-        table {
-            font-size: 0.9rem;
-        }
-        thead th {
-            position: sticky;
-            top: 0;
-            background-color: #fff;
-            z-index: 1;
-        }
-    </style>
-</head>
-<body>
-    <main class="container my-5">
+{% extends "base.html" %}
+
+{% block title %}Resultados do Processamento{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
         <h1 class="mb-4 text-center">Resultados do Processamento</h1>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="mb-3">
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-                        </div>
-                    {% endfor %}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center bg-white">
+                <strong class="fs-5">Dados Processados</strong>
+                <div>
+                    <a href="{{ url_for('exportar') }}" class="btn btn-success btn-sm">
+                        <i class="bi bi-file-earmark-excel"></i> Exportar para Excel
+                    </a>
+                    <a href="{{ url_for('gerar_modelo') }}" class="btn btn-outline-primary btn-sm ms-2">
+                        <i class="bi bi-download"></i> Baixar Modelo
+                    </a>
                 </div>
-            {% endif %}
-        {% endwith %}
-
-        <div class="card shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <strong>Dados Processados</strong>
-                <a href="{{ url_for('exportar') }}" class="btn btn-success btn-sm">Exportar para Excel</a>
             </div>
-            <div class="card-body table-container">
-                {{ dados_html|safe }}
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    {{ dados_html|safe }}
+                </div>
             </div>
-            <div class="card-footer text-muted small">
-                Mostrando as primeiras 50 linhas. Clique em "Exportar" para baixar o arquivo completo.
+            <div class="card-footer text-muted small bg-white">
+                Mostrando as primeiras 50 linhas. Exporte para Excel para visualizar o arquivo completo.
             </div>
         </div>
 
-        <div class="mt-4 text-center">
-            <a href="{{ url_for('configuracao') }}" class="btn btn-outline-secondary">Voltar para Configuração</a>
+        <div class="d-flex justify-content-between mt-4">
+            <a href="{{ url_for('configuracao') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar para Configuração
+            </a>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                <i class="bi bi-house"></i> Ir para Início
+            </a>
         </div>
-    </main>
+    </div>
+</div>
+{% endblock %}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Aplica DataTables na tabela
+    $('table').DataTable({
+        dom: '<"top"lf>rt<"bottom"ip>',
+        language: {
+            url: 'https://cdn.datatables.net/plug-ins/1.11.5/i18n/pt-BR.json'
+        },
+        scrollX: true,
+        pageLength: 10,
+        lengthMenu: [5, 10, 25, 50, 100],
+        responsive: true
+    });
+
+    // Adiciona classes Bootstrap à tabela gerada pelo pandas
+    $('table').addClass('table table-striped table-hover table-bordered');
+    $('thead').addClass('table-light');
+});
+</script>
+{% endblock %}
