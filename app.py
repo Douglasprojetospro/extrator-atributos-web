@@ -3,7 +3,7 @@ import re
 import json
 import pandas as pd
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, send_file, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, send_file, flash, jsonify, make_response
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -48,8 +48,8 @@ class ExtratorAtributos:
 
             # Ordena as variações pela prioridade (se existir)
             variacoes_ordenadas = sorted(variacoes, 
-                                         key=lambda x: x.get('prioridade', 0), 
-                                         reverse=True)
+                                       key=lambda x: x.get('prioridade', 0), 
+                                       reverse=True)
 
             regex_variacoes = []
             for variacao in variacoes_ordenadas:
@@ -127,6 +127,9 @@ def configuracao():
     if request.method == 'POST':
         try:
             data = request.get_json()
+            if not data:
+                return jsonify({'success': False, 'message': 'Dados inválidos'}), 400
+                
             nome = data.get('nome')
             tipo_retorno = data.get('tipo_retorno')
             variacoes = data.get('variacoes')
@@ -134,37 +137,59 @@ def configuracao():
             if not nome or not tipo_retorno or not variacoes:
                 return jsonify({'success': False, 'message': 'Dados incompletos'}), 400
 
-            # Adiciona prioridade se não existir
+            # Valida e processa as variações
+            variacoes_processadas = []
             for i, variacao in enumerate(variacoes):
-                if 'prioridade' not in variacao:
-                    variacao['prioridade'] = len(variacoes) - i
+                if not variacao.get('descricao') or not variacao.get('padroes'):
+                    return jsonify({'success': False, 'message': 'Descrição e padrões são obrigatórios para cada variação'}), 400
+                
+                # Garante que padrões é uma lista
+                padroes = variacao['padroes']
+                if isinstance(padroes, str):
+                    padroes = [p.strip() for p in padroes.split(',') if p.strip()]
+                
+                variacoes_processadas.append({
+                    'descricao': variacao['descricao'],
+                    'prioridade': variacao.get('prioridade', len(variacoes) - i),
+                    'padroes': padroes
+                })
 
             extrator.atributos[nome] = {
                 'tipo_retorno': tipo_retorno,
-                'variacoes': variacoes
+                'variacoes': variacoes_processadas
             }
 
-            return jsonify({'success': True, 'message': 'Atributo adicionado com sucesso!'})
+            return jsonify({
+                'success': True, 
+                'message': 'Atributo adicionado com sucesso!',
+                'atributo': nome
+            })
+            
         except Exception as e:
-            return jsonify({'success': False, 'message': str(e)}), 400
+            return jsonify({'success': False, 'message': f'Erro: {str(e)}'}), 500
 
     config_files = [f for f in os.listdir(app.config['CONFIG_FOLDER']) if f.endswith('.json')]
-
     return render_template('configuracao.html',
-                           config_files=config_files,
-                           atributos=extrator.atributos,
-                           extrator=extrator)
+                         config_files=config_files,
+                         atributos=extrator.atributos)
 
 @app.route('/api/atributos', methods=['GET', 'DELETE', 'PUT'])
 def gerenciar_atributos():
     if request.method == 'GET':
+        nome = request.args.get('nome')
+        if nome:
+            if nome in extrator.atributos:
+                return jsonify({nome: extrator.atributos[nome]})
+            return jsonify({'success': False, 'message': 'Atributo não encontrado'}), 404
         return jsonify(extrator.atributos)
+    
     elif request.method == 'DELETE':
         nome = request.args.get('nome')
         if nome in extrator.atributos:
             del extrator.atributos[nome]
-            return jsonify({'success': True})
+            return jsonify({'success': True, 'message': 'Atributo removido com sucesso'})
         return jsonify({'success': False, 'message': 'Atributo não encontrado'}), 404
+    
     elif request.method == 'PUT':
         try:
             data = request.get_json()
@@ -172,19 +197,41 @@ def gerenciar_atributos():
             if nome not in extrator.atributos:
                 return jsonify({'success': False, 'message': 'Atributo não encontrado'}), 404
 
-            # Atualiza prioridades se necessário
+            tipo_retorno = data.get('tipo_retorno')
             variacoes = data.get('variacoes')
+            
+            if not tipo_retorno or not variacoes:
+                return jsonify({'success': False, 'message': 'Dados incompletos'}), 400
+
+            # Processa as variações
+            variacoes_processadas = []
             for i, variacao in enumerate(variacoes):
-                if 'prioridade' not in variacao:
-                    variacao['prioridade'] = len(variacoes) - i
+                if not variacao.get('descricao') or not variacao.get('padroes'):
+                    return jsonify({'success': False, 'message': 'Descrição e padrões são obrigatórios'}), 400
+                
+                padroes = variacao['padroes']
+                if isinstance(padroes, str):
+                    padroes = [p.strip() for p in padroes.split(',') if p.strip()]
+                
+                variacoes_processadas.append({
+                    'descricao': variacao['descricao'],
+                    'prioridade': variacao.get('prioridade', len(variacoes) - i),
+                    'padroes': padroes
+                })
 
             extrator.atributos[nome] = {
-                'tipo_retorno': data.get('tipo_retorno'),
-                'variacoes': variacoes
+                'tipo_retorno': tipo_retorno,
+                'variacoes': variacoes_processadas
             }
-            return jsonify({'success': True, 'message': 'Atributo atualizado com sucesso!'})
+
+            return jsonify({
+                'success': True, 
+                'message': 'Atributo atualizado com sucesso!',
+                'atributo': nome
+            })
+            
         except Exception as e:
-            return jsonify({'success': False, 'message': str(e)}), 400
+            return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/salvar-configuracao', methods=['POST'])
 def salvar_configuracao():
@@ -233,7 +280,11 @@ def processar():
         dados_processados = extrator.processar_dados()
         output_path = os.path.join(app.config['UPLOAD_FOLDER'], 'resultados_processados.xlsx')
         dados_processados.to_excel(output_path, index=False)
-        return jsonify({'success': True, 'message': 'Processamento concluído com sucesso!'})
+        return jsonify({
+            'success': True, 
+            'message': 'Processamento concluído com sucesso!',
+            'file': 'resultados_processados.xlsx'
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -243,7 +294,11 @@ def resultados():
         flash('Nenhum resultado disponível. Processe os dados primeiro.', 'error')
         return redirect(url_for('configuracao'))
 
-    dados_html = extrator.dados_processados.head(50).to_html(classes='table table-striped', index=False)
+    dados_html = extrator.dados_processados.head(50).to_html(
+        classes='table table-striped table-bordered', 
+        index=False,
+        border=0
+    )
     return render_template('resultados.html', dados_html=dados_html)
 
 @app.route('/exportar')
