@@ -1,57 +1,37 @@
+/* static/styles.css */
 body {
     background-color: #f8f9fa;
-    font-family: "Segoe UI", sans-serif;
+    font-family: Arial, sans-serif;
 }
 
-.container {
-    max-width: 900px;
-    margin: 0 auto;
-}
-
-h2, h3 {
-    margin-bottom: 20px;
-    font-weight: bold;
+h2, h4, h5 {
+    color: #343a40;
 }
 
 .card {
-    border-radius: 10px;
-    box-shadow: 0 0 8px rgba(0, 0, 0, 0.05);
-    background-color: white;
-}
-
-.table thead {
-    background-color: #0d6efd;
-    color: white;
-}
-
-.alert {
-    margin-top: 20px;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
 }
 
 .btn {
-    font-weight: 500;
+    border-radius: 0.3rem;
 }
 
-.btn-outline-primary:hover {
-    background-color: #0d6efd;
-    color: white;
-}
-
-textarea {
+textarea.form-control {
     resize: vertical;
-    min-height: 80px;
 }
 
-.scrollable-section {
-    max-height: 300px;
-    overflow-y: auto;
+.list-group-item {
+    cursor: grab;
 }
 
-.input-group > .form-control {
-    border-right: none;
-}
-
-.input-group > .input-group-text {
+.list-group-item:active {
+    cursor: grabbing;
     background-color: #e9ecef;
-    border-left: none;
 }
+
+input[type="file"] {
+    margin-top: 0.5rem;
+}
+
