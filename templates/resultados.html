@@ -1,29 +1,43 @@
 {% extends 'base.html' %}
-{% block title %}Resultados{% endblock %}
+{% block title %}Resultados da Extração{% endblock %}
 {% block content %}
-<h2 class="mb-4">📊 Resultados</h2>
 
-<table class="table table-bordered table-striped">
-    <thead>
-        <tr>
-            {% for coluna in df[0].keys() %}
-            <th>{{ coluna }}</th>
-            {% endfor %}
-        </tr>
-    </thead>
-    <tbody>
-        {% for linha in df %}
-        <tr>
-            {% for valor in linha.values() %}
-            <td>{{ valor }}</td>
-            {% endfor %}
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<h2 class="mb-4">📊 Resultados da Extração</h2>
 
-<div class="mt-4">
-    <a href="{{ url_for('download') }}" class="btn btn-success">⬇️ Baixar Planilha Completa</a>
-    <a href="{{ url_for('configurar') }}" class="btn btn-secondary">← Voltar à Configuração</a>
+{% if nome_arquivo %}
+<div class="alert alert-success">
+    <strong>Arquivo processado:</strong> {{ nome_arquivo }} ({{ total_linhas }} registros)
 </div>
+{% endif %}
+
+{% if dados and dados.columns %}
+<div class="table-responsive">
+    <table class="table table-bordered table-hover">
+        <thead class="table-light">
+            <tr>
+                {% for coluna in dados.columns %}
+                <th>{{ coluna }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for linha in dados.values %}
+            <tr>
+                {% for valor in linha %}
+                <td>{{ valor }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="d-flex justify-content-between mt-4">
+    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">← Voltar</a>
+    <a href="{{ url_for('baixar_resultado') }}" class="btn btn-success">📥 Baixar Resultado</a>
+</div>
+{% else %}
+<p>Nenhum resultado para exibir. Faça o upload de uma planilha e processe os dados.</p>
+{% endif %}
+
 {% endblock %}
