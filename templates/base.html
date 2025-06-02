@@ -2,25 +2,25 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}Extrator de Atributos{% endblock %}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema de Extração de Atributos{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body class="bg-light">
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm mb-4">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
     <div class="container">
-        <a class="navbar-brand fw-bold" href="/">Extrator de Atributos</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
+        <a class="navbar-brand" href="{{ url_for('index') }}">
+            <i class="bi bi-braces"></i> Extrator de Atributos
+        </a>
+        <div class="collapse navbar-collapse">
             <ul class="navbar-nav ms-auto">
-                <li class="nav-item"><a class="nav-link" href="/">Início</a></li>
-                <li class="nav-item"><a class="nav-link" href="/configurar">Configurar</a></li>
-                <li class="nav-item"><a class="nav-link" href="/processar">Processar</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Início</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('configurar') }}">Configuração</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('resultado') }}">Resultados</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('modelo') }}">Modelo</a></li>
             </ul>
         </div>
     </div>
@@ -28,21 +28,23 @@
 
 <div class="container">
     {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-                </div>
-            {% endfor %}
-        {% endif %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
     {% endwith %}
 
     {% block content %}{% endblock %}
 </div>
 
-<footer class="text-center mt-5 py-4 border-top">
-    <small class="text-muted">&copy; {{ config.SITE_NAME if config.SITE_NAME else 'Sistema de Extração de Atributos' }} - {{ current_year if current_year else '2025' }}</small>
+<footer class="bg-dark text-white text-center py-4 mt-5">
+    <div class="container">
+        <p class="mb-0">Sistema de Extração de Atributos &copy; {{ current_year|default(2025) }}</p>
+    </div>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
