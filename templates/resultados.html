@@ -1,58 +1,29 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Resultados da Extração</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-<div class="container py-5">
-  <h2 class="text-center mb-4">📊 Resultados da Extração</h2>
+{% extends 'base.html' %}
+{% block title %}Resultados{% endblock %}
+{% block content %}
+<h2 class="mb-4">📊 Resultados</h2>
 
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
-          {{ message }}
-          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-        </div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
-
-  <div class="table-responsive">
-    <table class="table table-bordered table-striped align-middle">
-      <thead class="table-dark">
+<table class="table table-bordered table-striped">
+    <thead>
         <tr>
-          <th>#</th>
-          <th>ID</th>
-          <th>Descrição</th>
-          {% for attr in atributos %}
-            <th>{{ attr }}</th>
-          {% endfor %}
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in df %}
-          <tr>
-            <td>{{ loop.index }}</td>
-            <td>{{ row['ID'] }}</td>
-            <td>{{ row['Descrição'] }}</td>
-            {% for attr in atributos %}
-              <td>{{ row.get(attr, '') }}</td>
+            {% for coluna in df[0].keys() %}
+            <th>{{ coluna }}</th>
             {% endfor %}
-          </tr>
+        </tr>
+    </thead>
+    <tbody>
+        {% for linha in df %}
+        <tr>
+            {% for valor in linha.values() %}
+            <td>{{ valor }}</td>
+            {% endfor %}
+        </tr>
         {% endfor %}
-      </tbody>
-    </table>
-  </div>
+    </tbody>
+</table>
 
-  <div class="text-end mt-4">
-    <a href="{{ url_for('download') }}" class="btn btn-success">⬇️ Baixar Resultado (.xlsx)</a>
-    <a href="{{ url_for('index') }}" class="btn btn-secondary ms-2">↩️ Voltar ao Início</a>
-  </div>
+<div class="mt-4">
+    <a href="{{ url_for('download') }}" class="btn btn-success">⬇️ Baixar Planilha Completa</a>
+    <a href="{{ url_for('configurar') }}" class="btn btn-secondary">← Voltar à Configuração</a>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+{% endblock %}
