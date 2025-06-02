@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+
 {% block conteudo %}
 <h2>📄 Upload da Planilha</h2>
 
@@ -11,4 +12,13 @@
         <a href="{{ url_for('baixar_modelo') }}" class="botao-secundario">📥 Baixar Modelo Excel</a>
     </div>
 </form>
+
+{% if get_flashed_messages() %}
+    <div class="flash-mensagens">
+        {% for msg in get_flashed_messages(with_categories=true) %}
+            <div class="flash {{ msg[0] }}">{{ msg[1] }}</div>
+        {% endfor %}
+    </div>
+{% endif %}
+
 {% endblock %}
