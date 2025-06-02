@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Configurar Atributos{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-sliders2-vertical"></i> Configuração de Atributos</h2>
+
+<form method="POST" action="/configurar">
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label">Nome do Atributo</label>
+                <input type="text" name="nome" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Tipo de Retorno</label>
+                <select name="tipo_retorno" class="form-select" required>
+                    <option value="valor">Apenas valor (ex: 220)</option>
+                    <option value="texto">Texto (ex: 220V)</option>
+                    <option value="completo">Completo (ex: Voltagem: 220V)</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Variações</label>
+                <div id="variacoes-container">
+                    <div class="input-group mb-2">
+                        <input type="text" name="variacoes" class="form-control" placeholder="Ex: 220V">
+                        <input type="text" name="padroes" class="form-control" placeholder="Padrões separados por vírgula">
+                        <input type="text" name="prioridade" class="form-control" placeholder="Prioridade (mesmo texto da variação)">
+                    </div>
+                </div>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addVariacao()">+ Adicionar Variação</button>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 mt-3">
+                <i class="bi bi-check-circle"></i> Salvar Atributo
+            </button>
+        </div>
+    </div>
+</form>
+
+{% if atributos %}
+<div class="card">
+    <div class="card-header"><strong>Atributos Configurados</strong></div>
+    <div class="card-body p-0">
+        <table class="table table-striped m-0">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Tipo de Retorno</th>
+                    <th>Variações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for nome, config in atributos.items() %}
+                <tr>
+                    <td>{{ nome }}</td>
+                    <td>{{ config.tipo_retorno }}</td>
+                    <td>
+                        {% for var in config.variacoes %}
+                            <span class="badge bg-secondary">{{ var.descricao }}</span>
+                        {% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<script>
+    function addVariacao() {
+        const container = document.getElementById("variacoes-container");
+        const div = document.createElement("div");
+        div.className = "input-group mb-2";
+        div.innerHTML = `
+            <input type="text" name="variacoes" class="form-control" placeholder="Ex: 220V">
+            <input type="text" name="padroes" class="form-control" placeholder="Padrões separados por vírgula">
+            <input type="text" name="prioridade" class="form-control" placeholder="Prioridade (mesmo texto da variação)">
+        `;
+        container.appendChild(div);
+    }
+</script>
+{% endblock %}
