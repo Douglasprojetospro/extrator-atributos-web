@@ -2,181 +2,171 @@ from flask import Flask, render_template, request, redirect, url_for, send_file,
 import pandas as pd
 import os
 import json
-import re
-from werkzeug.utils import secure_filename
 from io import BytesIO
+from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = 'segredo-super-seguro'
-UPLOAD_FOLDER = 'uploads'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.secret_key = 'segredo-temporario'
 
-# Banco de dados em memória
-atributos = {}
-dados_processados = pd.DataFrame()
-dados_originais = pd.DataFrame()
+atributos_config = {}
+df_processado = None
+nome_arquivo = None
+total_linhas = 0
 atributo_em_edicao = None
-prioridade_variacoes = []
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
 def index():
-    if request.method == 'POST':
-        arquivo = request.files['arquivo']
-        if not arquivo.filename.endswith('.xlsx'):
-            flash("Formato inválido. Envie um arquivo .xlsx", 'error')
-            return redirect(url_for('index'))
+    return render_template('index.html')
 
+@app.route('/upload', methods=['POST'])
+def upload():
+    global df_processado, nome_arquivo, total_linhas
+
+    arquivo = request.files['arquivo']
+    if not arquivo:
+        flash('Nenhum arquivo enviado', 'error')
+        return redirect(url_for('index'))
+
+    try:
         df = pd.read_excel(arquivo)
         if 'ID' not in df.columns or 'Descrição' not in df.columns:
-            flash("A planilha precisa conter as colunas 'ID' e 'Descrição'", 'error')
+            flash("A planilha deve conter as colunas 'ID' e 'Descrição'", 'error')
             return redirect(url_for('index'))
 
-        global dados_originais
-        dados_originais = df
-        flash("Planilha carregada com sucesso!", 'success')
+        df_processado = df
+        nome_arquivo = arquivo.filename
+        total_linhas = len(df)
         return redirect(url_for('configurar'))
-
-    return render_template('index.html')
+    except Exception as e:
+        flash(f'Erro ao processar arquivo: {str(e)}', 'error')
+        return redirect(url_for('index'))
 
 @app.route('/baixar-modelo')
 def baixar_modelo():
     modelo = pd.DataFrame(columns=['ID', 'Descrição'])
-    modelo.loc[0] = ['001', 'exemplo produto 110v']
-    modelo.loc[1] = ['002', 'outro produto 220v']
+    modelo.loc[0] = ['001', 'ventilador de parede 110V']
+    modelo.loc[1] = ['002', 'luminária 220V']
 
-    output = BytesIO()
-    modelo.to_excel(output, index=False)
-    output.seek(0)
-    return send_file(output, download_name="modelo_atributos.xlsx", as_attachment=True)
+    buffer = BytesIO()
+    modelo.to_excel(buffer, index=False)
+    buffer.seek(0)
+
+    return send_file(buffer, as_attachment=True, download_name='modelo_descricoes.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 @app.route('/configurar', methods=['GET'])
 def configurar():
-    return render_template(
-        'configurar.html',
-        atributo_em_edicao=atributo_em_edicao,
-        atributos=atributos,
-        variacoes=atributo_em_edicao['variacoes'] if atributo_em_edicao else []
-    )
+    return render_template('configurar.html', atributos=atributos_config, atributo_em_edicao=atributo_em_edicao, variacoes=atributo_em_edicao['variacoes'] if atributo_em_edicao else [])
 
 @app.route('/adicionar-variacao', methods=['POST'])
 def adicionar_variacao():
-    nome = request.form['nome']
+    global atributo_em_edicao
+    nome = request.form.get('nome')
     variacoes_form = request.form.to_dict(flat=False)
 
     variacoes = []
-    index = 0
-    while f'variacoes[{index}][descricao]' in variacoes_form:
-        descricao = variacoes_form[f'variacoes[{index}][descricao]'][0]
-        padroes = variacoes_form.get(f'variacoes[{index}][padroes]', [''])[0].splitlines()
-        padroes = [p.strip() for p in padroes if p.strip()]
+    for i in range(len([k for k in variacoes_form if k.startswith('variacoes[')] ) // 2):
+        descricao = variacoes_form.get(f'variacoes[{i}][descricao]', [''])[0].strip()
+        padroes_texto = variacoes_form.get(f'variacoes[{i}][padroes]', [''])[0]
+        padroes = [p.strip() for p in padroes_texto.strip().split('\n') if p.strip()]
         variacoes.append({'descricao': descricao, 'padroes': padroes})
-        index += 1
 
-    global atributo_em_edicao
     atributo_em_edicao = {
         'nome': nome,
+        'tipo_retorno': 'texto',
         'variacoes': variacoes
     }
-
-    flash("Variações salvas. Agora defina a prioridade.", 'success')
     return redirect(url_for('configurar'))
 
 @app.route('/salvar-prioridade', methods=['POST'])
 def salvar_prioridade():
+    global atributo_em_edicao
     ordem = request.form.get('ordem_prioridade', '').split(',')
     if not atributo_em_edicao:
         flash("Nenhum atributo em edição", 'error')
         return redirect(url_for('configurar'))
 
-    # Ordenar as variações pela ordem recebida
     novas_variacoes = []
     for desc in ordem:
-        for var in atributo_em_edicao['variacoes']:
-            if var['descricao'] == desc:
-                novas_variacoes.append(var)
+        for v in atributo_em_edicao['variacoes']:
+            if v['descricao'] == desc:
+                novas_variacoes.append(v)
                 break
 
-    global atributos
-    atributos[atributo_em_edicao['nome']] = {
-        'variacoes': novas_variacoes
-    }
-
-    global atributo_em_edicao
+    atributo_em_edicao['variacoes'] = novas_variacoes
+    atributos_config[atributo_em_edicao['nome']] = atributo_em_edicao
     atributo_em_edicao = None
-    flash("Atributo configurado com sucesso!", 'success')
+    flash("Configuração salva com sucesso!", 'success')
     return redirect(url_for('configurar'))
 
 @app.route('/editar/<nome>')
 def editar_configuracao(nome):
     global atributo_em_edicao
-    atributo_em_edicao = {'nome': nome, 'variacoes': atributos[nome]['variacoes']}
+    atributo_em_edicao = atributos_config.get(nome)
     return redirect(url_for('configurar'))
 
 @app.route('/excluir/<nome>')
 def excluir_configuracao(nome):
-    if nome in atributos:
-        del atributos[nome]
-        flash("Atributo excluído com sucesso!", 'success')
+    atributos_config.pop(nome, None)
+    flash(f"Atributo '{nome}' excluído.", 'info')
     return redirect(url_for('configurar'))
 
-@app.route('/exportar')
+@app.route('/exportar-configuracoes')
 def exportar_configuracoes():
-    output = BytesIO()
-    json.dump(atributos, output, indent=4, ensure_ascii=False)
-    output.seek(0)
-    return send_file(output, download_name="configuracoes.json", as_attachment=True)
+    json_data = json.dumps(atributos_config, indent=2, ensure_ascii=False)
+    buffer = BytesIO()
+    buffer.write(json_data.encode('utf-8'))
+    buffer.seek(0)
+    return send_file(buffer, as_attachment=True, download_name='config_atributos.json', mimetype='application/json')
 
-@app.route('/importar', methods=['POST'])
+@app.route('/importar-configuracoes', methods=['POST'])
 def importar_configuracoes():
+    global atributos_config
     arquivo = request.files['arquivo']
-    if not arquivo.filename.endswith('.json'):
-        flash("Formato inválido. Envie um JSON.", 'error')
+    if not arquivo:
+        flash('Nenhum arquivo enviado', 'error')
         return redirect(url_for('configurar'))
 
-    global atributos
-    atributos = json.load(arquivo)
-    flash("Configurações importadas com sucesso!", 'success')
+    try:
+        dados = json.load(arquivo)
+        if isinstance(dados, dict):
+            atributos_config = dados
+            flash("Configurações importadas com sucesso!", 'success')
+        else:
+            flash("Formato de arquivo inválido", 'error')
+    except Exception as e:
+        flash(f"Erro ao importar: {str(e)}", 'error')
     return redirect(url_for('configurar'))
 
 @app.route('/processar')
 def processar():
-    global dados_processados
-    if dados_originais.empty or not atributos:
-        flash("Planilha e atributos são necessários para processar.", 'error')
+    global df_processado
+    if df_processado is None or not atributos_config:
+        flash("Dados ou atributos ausentes", 'error')
         return redirect(url_for('index'))
 
-    df = dados_originais.copy()
-
-    for nome_attr, config in atributos.items():
-        df[nome_attr] = ""
-
-        for idx, row in df.iterrows():
-            descricao = str(row['Descrição']).lower()
-            encontrado = ""
-
+    df_resultado = df_processado.copy()
+    for nome_attr, config in atributos_config.items():
+        col_resultado = []
+        for desc in df_resultado['Descrição']:
+            desc_lower = str(desc).lower()
+            valor_final = ""
             for variacao in config['variacoes']:
                 for padrao in variacao['padroes']:
-                    if re.search(re.escape(padrao), descricao):
-                        encontrado = variacao['descricao']
+                    if padrao.lower() in desc_lower:
+                        valor_final = variacao['descricao']
                         break
-                if encontrado:
+                if valor_final:
                     break
+            col_resultado.append(valor_final)
+        df_resultado[nome_attr] = col_resultado
 
-            df.at[idx, nome_attr] = encontrado
+    # salvar para download
+    df_resultado.to_excel('resultado_processado.xlsx', index=False)
+    return render_template('resultados.html', dados=df_resultado, nome_arquivo=nome_arquivo, total_linhas=total_linhas)
 
-    dados_processados = df
-    return render_template('resultados.html', dados=df)
-
-@app.route('/baixar-resultados')
-def baixar_resultados():
-    if dados_processados.empty:
-        flash("Nenhum dado processado ainda", 'error')
-        return redirect(url_for('processar'))
-
-    output = BytesIO()
-    dados_processados.to_excel(output, index=False)
-    output.seek(0)
-    return send_file(output, download_name="resultados_extraidos.xlsx", as_attachment=True)
+@app.route('/baixar-resultado')
+def baixar_resultado():
+    return send_file('resultado_processado.xlsx', as_attachment=True)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False, port=10000, host='0.0.0.0')
