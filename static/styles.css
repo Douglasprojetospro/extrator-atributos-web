@@ -1,149 +1,257 @@
+/* General Styles */
 body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    background-color: #f4f4f4;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
     color: #333;
-}
-
-header {
-    background-color: #0a74da;
-    color: #fff;
-    padding: 20px 40px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-header h1 {
+    background-color: #f5f5f5;
     margin: 0;
-    font-size: 1.8em;
+    padding: 0;
 }
 
-nav a {
-    color: #fff;
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1, h2, h3 {
+    color: #2c3e50;
+    margin-top: 0;
+}
+
+a {
+    color: #3498db;
     text-decoration: none;
-    margin-left: 20px;
-    font-weight: bold;
 }
 
-nav a:hover {
+a:hover {
     text-decoration: underline;
 }
 
-main {
-    padding: 30px 40px;
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-form {
-    background-color: #fff;
-    padding: 25px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+/* Header Styles */
+header {
+    background-color: #2c3e50;
+    color: white;
+    padding: 20px 0;
     margin-bottom: 30px;
 }
 
-input[type="text"],
-textarea,
-input[type="file"],
-select {
-    width: 100%;
-    padding: 10px;
-    margin-top: 8px;
-    margin-bottom: 20px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    box-sizing: border-box;
-    resize: vertical;
+header h1 {
+    color: white;
+    margin: 0;
+    padding: 0 20px;
 }
 
-button,
-input[type="submit"] {
-    background-color: #0a74da;
-    color: #fff;
-    border: none;
-    padding: 12px 20px;
-    cursor: pointer;
-    border-radius: 5px;
-    font-weight: bold;
+/* Navigation */
+.nav {
+    background-color: #34495e;
+    padding: 10px 20px;
 }
 
-button:hover,
-input[type="submit"]:hover {
-    background-color: #0956a3;
+.nav a {
+    color: white;
+    margin-right: 15px;
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 25px;
-    background-color: #fff;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+.nav a:hover {
+    color: #ecf0f1;
 }
 
-table, th, td {
-    border: 1px solid #ddd;
-}
-
-th, td {
-    padding: 12px;
-    text-align: left;
-}
-
-th {
-    background-color: #f1f1f1;
-}
-
-footer {
-    text-align: center;
-    padding: 15px;
-    background-color: #222;
-    color: #ccc;
-    margin-top: 40px;
-}
-
-.flash-container {
-    margin-bottom: 25px;
-}
-
+/* Flash Messages */
 .flash {
     padding: 15px;
-    margin-bottom: 15px;
-    border-radius: 5px;
+    margin-bottom: 20px;
+    border-radius: 4px;
 }
 
 .flash.success {
     background-color: #d4edda;
     color: #155724;
+    border: 1px solid #c3e6cb;
 }
 
 .flash.error {
     background-color: #f8d7da;
     color: #721c24;
+    border: 1px solid #f5c6cb;
 }
 
-.flash.info {
-    background-color: #d1ecf1;
-    color: #0c5460;
+.flash.warning {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
 }
 
-/* Responsivo */
+/* Form Styles */
+.form-group {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+input[type="text"],
+input[type="file"],
+input[type="password"],
+input[type="email"],
+select,
+textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+button,
+.btn {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    display: inline-block;
+}
+
+button:hover,
+.btn:hover {
+    background-color: #2980b9;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+}
+
+/* Table Styles */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.table th,
+.table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.table th {
+    background-color: #2c3e50;
+    color: white;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.075);
+}
+
+/* Card Layout */
+.card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+/* Configuration Interface */
+.config-section {
+    margin-bottom: 30px;
+}
+
+.attribute-list {
+    list-style: none;
+    padding: 0;
+}
+
+.attribute-item {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.variation-item {
+    background: #f8f9fa;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
-    header {
-        flex-direction: column;
-        align-items: flex-start;
+    .container {
+        padding: 10px;
     }
-
-    nav {
-        margin-top: 10px;
+    
+    .table {
+        font-size: 14px;
     }
-
-    nav a {
-        margin-left: 0;
-        margin-right: 15px;
+    
+    .table th,
+    .table td {
+        padding: 8px 10px;
     }
 }
 
+/* Utility Classes */
+.mt-0 { margin-top: 0 !important; }
+.mb-0 { margin-bottom: 0 !important; }
+.mt-1 { margin-top: 5px !important; }
+.mb-1 { margin-bottom: 5px !important; }
+.mt-2 { margin-top: 10px !important; }
+.mb-2 { margin-bottom: 10px !important; }
+.mt-3 { margin-top: 15px !important; }
+.mb-3 { margin-bottom: 15px !important; }
+.mt-4 { margin-top: 20px !important; }
+.mb-4 { margin-bottom: 20px !important; }
 
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-left { text-align: left; }
+
+/* Animation */
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* JSON Editor Styles */
+.json-editor {
+    font-family: monospace;
+    min-height: 200px;
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
