@@ -1,89 +1,94 @@
 {% extends 'base.html' %}
-{% block title %}Configurar Atributos{% endblock %}
 {% block content %}
-<h2 class="mb-4">⚙️ Configuração de Atributos</h2>
+<div class="container mt-4">
+    <h3>🔧 Configuração de Atributos</h3>
 
-<form method="POST" action="{{ url_for('salvar_configuracao') }}">
-    <div class="mb-3">
-        <label for="nome" class="form-label">Nome do Atributo</label>
-        <input type="text" class="form-control" id="nome" name="nome" value="{{ atributo_em_edicao.nome if atributo_em_edicao else '' }}" required>
-    </div>
+    <form method="POST" action="/adicionar-variacao">
+        <div class="mb-3">
+            <label for="nome" class="form-label">Nome do Atributo</label>
+            <input type="text" class="form-control" name="nome" id="nome" required value="{{ atributo_em_edicao.nome if atributo_em_edicao }}">
+        </div>
 
-    <div id="variacoes-container">
         <h5>Variações</h5>
-        {% for idx, variacao in variacoes %}
-        <div class="card mb-3">
-            <div class="card-body">
+        <div id="variacoes-container">
+            {% for i, variacao in enumerate(variacoes or [{}]) %}
+            <div class="card p-3 mb-2 variacao-item">
                 <div class="mb-2">
                     <label class="form-label">Descrição da Variação</label>
-                    <input type="text" class="form-control" name="variacoes[{{ idx }}][descricao]" value="{{ variacao.descricao }}" required>
+                    <input type="text" class="form-control" name="variacoes[{{ i }}][descricao]" value="{{ variacao.descricao }}" required>
                 </div>
-                <div class="mb-2">
+                <div>
                     <label class="form-label">Padrões (um por linha)</label>
-                    <textarea class="form-control" name="variacoes[{{ idx }}][padroes]" rows="3" required>{{ variacao.padroes|join('\n') }}</textarea>
+                    <textarea class="form-control" name="variacoes[{{ i }}][padroes]" rows="3">{{ variacao.padroes | join('\n') }}</textarea>
                 </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-    </div>
 
-    <button type="submit" class="btn btn-success mb-4">Salvar Atributo</button>
-</form>
-
-<form method="POST" action="{{ url_for('salvar_prioridade') }}">
-    <h5>Prioridade das Variações</h5>
-    <p class="text-muted">Arraste para ordenar da mais importante para a menos importante:</p>
-    <ul class="list-group mb-3" id="prioridade-lista">
-        {% for variacao in variacoes %}
-        <li class="list-group-item" data-id="{{ variacao.descricao }}">{{ variacao.descricao }}</li>
-        {% endfor %}
-    </ul>
-    <input type="hidden" name="ordem_prioridade" id="ordemPrioridadeInput">
-    <button type="submit" class="btn btn-primary">Salvar Prioridade</button>
-</form>
-
-<hr>
-<h4 class="mt-5">Atributos Configurados</h4>
-<ul class="list-group">
-    {% for nome, attr in atributos.items() %}
-    <li class="list-group-item d-flex justify-content-between align-items-center">
-        <div>
-            <strong>{{ nome }}</strong>
-            <small class="d-block">Variações: {{ attr.variacoes|length }}</small>
-        </div>
-        <div>
-            <a href="{{ url_for('editar_configuracao', nome=nome) }}" class="btn btn-sm btn-warning">Editar</a>
-            <a href="{{ url_for('excluir_configuracao', nome=nome) }}" class="btn btn-sm btn-danger">Excluir</a>
-        </div>
-    </li>
-    {% else %}
-    <li class="list-group-item">Nenhum atributo configurado ainda.</li>
-    {% endfor %}
-</ul>
-
-<div class="mt-4 d-flex gap-2">
-    <a href="{{ url_for('exportar_configuracoes') }}" class="btn btn-outline-secondary">📥 Exportar Configurações</a>
-    <form method="POST" action="{{ url_for('importar_configuracoes') }}" enctype="multipart/form-data" class="d-inline">
-        <input type="file" name="arquivo" accept=".json" required>
-        <button type="submit" class="btn btn-outline-primary">📤 Importar Configurações</button>
+        <button type="submit" class="btn btn-success mt-2">Salvar Variações</button>
     </form>
-    <a href="{{ url_for('processar') }}" class="btn btn-success ms-auto">Ir para Processamento</a>
+
+    {% if atributo_em_edicao %}
+    <form method="POST" action="/salvar-prioridade" class="mt-4">
+        <h5>Prioridade das Variações</h5>
+        <p>Arraste para ordenar:</p>
+        <ul id="lista-prioridade" class="list-group">
+            {% for v in atributo_em_edicao.variacoes %}
+            <li class="list-group-item">{{ v.descricao }}</li>
+            {% endfor %}
+        </ul>
+        <input type="hidden" name="ordem_prioridade" id="ordem_prioridade">
+        <button type="submit" class="btn btn-primary mt-3">Salvar Configuração</button>
+    </form>
+    {% endif %}
+
+    {% if atributos %}
+    <hr>
+    <h4>Atributos Configurados</h4>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Variações</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for nome, config in atributos.items() %}
+            <tr>
+                <td>{{ nome }}</td>
+                <td>{{ config.variacoes | map(attribute='descricao') | join(', ') }}</td>
+                <td>
+                    <a href="/editar/{{ nome }}" class="btn btn-sm btn-warning">Editar</a>
+                    <a href="/excluir/{{ nome }}" class="btn btn-sm btn-danger">Excluir</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="/exportar-configuracoes" class="btn btn-outline-secondary">Exportar Configurações</a>
+    <form method="POST" action="/importar-configuracoes" enctype="multipart/form-data" class="d-inline-block">
+        <input type="file" name="arquivo" class="form-control d-inline w-auto" required>
+        <button type="submit" class="btn btn-outline-secondary">Importar</button>
+    </form>
+    {% endif %}
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const lista = document.getElementById('prioridade-lista');
+    // Drag and drop para ordenar prioridades
+    document.addEventListener('DOMContentLoaded', () => {
+        const lista = document.getElementById('lista-prioridade');
         if (lista) {
             new Sortable(lista, {
                 animation: 150,
-                onEnd: function () {
-                    const ordem = Array.from(lista.children).map(li => li.dataset.id);
-                    document.getElementById('ordemPrioridadeInput').value = ordem.join(',');
+                onEnd: () => {
+                    const ordem = Array.from(lista.children).map(li => li.textContent.trim());
+                    document.getElementById('ordem_prioridade').value = ordem.join(',');
                 }
             });
         }
     });
 </script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 {% endblock %}
 
