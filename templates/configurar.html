@@ -1,98 +1,58 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Configurar Atributos</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-</head>
-<body class="bg-light">
-  <div class="container py-5">
-    <h2 class="text-center mb-4">⚙️ Configuração de Atributos</h2>
+{% extends 'base.html' %}
+{% block title %}Configurar Atributos{% endblock %}
+{% block content %}
+<h2 class="mb-4">⚙️ Configurar Atributos</h2>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
+<form method="POST">
+    <div class="mb-3">
+        <label for="nome" class="form-label">Nome do Atributo</label>
+        <input type="text" class="form-control" name="nome" required>
+    </div>
 
-    <form method="POST">
-      <div class="mb-3">
-        <label for="nome" class="form-label">Nome do Atributo:</label>
-        <input type="text" class="form-control" id="nome" name="nome" required>
-      </div>
-
-      <div class="mb-3">
-        <label for="tipo_retorno" class="form-label">Tipo de Retorno:</label>
-        <select class="form-select" id="tipo_retorno" name="tipo_retorno" required>
-          <option value="valor">Valor (ex: 110)</option>
-          <option value="texto">Texto Padrão (ex: 110V)</option>
-          <option value="completo">Descrição Completa (ex: Voltagem: 110V)</option>
+    <div class="mb-3">
+        <label for="tipo_retorno" class="form-label">Formato de Retorno</label>
+        <select class="form-select" name="tipo_retorno">
+            <option value="valor">Valor (ex: '110')</option>
+            <option value="texto">Texto Padrão (ex: '110V')</option>
+            <option value="completo">Descrição Completa (ex: 'Voltagem: 110V')</option>
         </select>
-      </div>
+    </div>
 
-      <div class="mb-3">
-        <label class="form-label">Variações e Padrões:</label>
-        <div id="variacoes-container">
-          <div class="row g-2 mb-2">
-            <div class="col-md-4">
-              <input type="text" class="form-control" name="variacoes" placeholder="Descrição da Variação" required>
-            </div>
-            <div class="col-md-8">
-              <input type="text" class="form-control" name="padroes" placeholder="Padrões separados por vírgula" required>
-            </div>
-          </div>
+    <div class="mb-3">
+        <label class="form-label">Variações (uma por linha)</label>
+        <textarea class="form-control" name="variacoes" rows="4" placeholder="Exemplo:\n110V\n220V\nBivolt" required></textarea>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Padrões de Reconhecimento (mesma ordem das variações, separados por vírgula)</label>
+        <textarea class="form-control" name="padroes" rows="4" placeholder="Exemplo:\n110,v110\n220,v220\nbivolt" required></textarea>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Prioridade (ordem das variações)</label>
+        <input type="text" class="form-control" name="prioridade" placeholder="Ex: Bivolt, 220V, 110V" required>
+    </div>
+
+    <button type="submit" class="btn btn-success">Salvar Atributo</button>
+</form>
+
+<hr>
+<h4 class="mt-5">Atributos Configurados</h4>
+<ul class="list-group">
+    {% for nome, attr in atributos.items() %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+            <strong>{{ nome }}</strong><br>
+            <small>Tipo: {{ attr.tipo_retorno }} | Variações: {{ attr.variacoes|length }}</small>
         </div>
-        <button type="button" class="btn btn-sm btn-secondary" onclick="addVariacao()">+ Adicionar Variação</button>
-      </div>
+    </li>
+    {% else %}
+    <li class="list-group-item">Nenhum atributo configurado ainda.</li>
+    {% endfor %}
+</ul>
 
-      <div class="mb-3">
-        <label class="form-label">Ordem de Prioridade:</label>
-        <textarea name="prioridade" class="form-control" rows="2" placeholder="Informe as variações em ordem de prioridade, separadas por vírgula" required></textarea>
-      </div>
+<div class="mt-4">
+    <a href="{{ url_for('processar') }}" class="btn btn-primary">Processar Planilha</a>
+</div>
+{% endblock %}
 
-      <div class="d-grid">
-        <button type="submit" class="btn btn-primary">Salvar Atributo</button>
-      </div>
-    </form>
-
-    {% if atributos %}
-      <hr>
-      <h4 class="mt-5">🔎 Atributos Configurados</h4>
-      <ul class="list-group mt-3">
-        {% for nome, config in atributos.items() %}
-          <li class="list-group-item">
-            <strong>{{ nome }}</strong> — Tipo: {{ config.tipo_retorno }} — Variações: {{ config.variacoes | length }}
-          </li>
-        {% endfor %}
-      </ul>
-      <div class="text-end mt-4">
-        <a href="{{ url_for('processar') }}" class="btn btn-success">➡️ Processar Planilha</a>
-      </div>
-    {% endif %}
-  </div>
-
-  <script>
-    function addVariacao() {
-      const container = document.getElementById("variacoes-container");
-      const linha = document.createElement("div");
-      linha.className = "row g-2 mb-2";
-      linha.innerHTML = `
-        <div class="col-md-4">
-          <input type="text" class="form-control" name="variacoes" placeholder="Descrição da Variação" required>
-        </div>
-        <div class="col-md-8">
-          <input type="text" class="form-control" name="padroes" placeholder="Padrões separados por vírgula" required>
-        </div>
-      `;
-      container.appendChild(linha);
-    }
-  </script>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
