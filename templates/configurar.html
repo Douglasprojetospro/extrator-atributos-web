@@ -1,87 +1,98 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Configurar Atributos</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+  <div class="container py-5">
+    <h2 class="text-center mb-4">⚙️ Configuração de Atributos</h2>
 
-{% block title %}Configurar Atributos{% endblock %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
 
-{% block content %}
-<h2 class="mb-4"><i class="bi bi-sliders2-vertical"></i> Configuração de Atributos</h2>
+    <form method="POST">
+      <div class="mb-3">
+        <label for="nome" class="form-label">Nome do Atributo:</label>
+        <input type="text" class="form-control" id="nome" name="nome" required>
+      </div>
 
-<form method="POST" action="/configurar">
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="mb-3">
-                <label class="form-label">Nome do Atributo</label>
-                <input type="text" name="nome" class="form-control" required>
+      <div class="mb-3">
+        <label for="tipo_retorno" class="form-label">Tipo de Retorno:</label>
+        <select class="form-select" id="tipo_retorno" name="tipo_retorno" required>
+          <option value="valor">Valor (ex: 110)</option>
+          <option value="texto">Texto Padrão (ex: 110V)</option>
+          <option value="completo">Descrição Completa (ex: Voltagem: 110V)</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Variações e Padrões:</label>
+        <div id="variacoes-container">
+          <div class="row g-2 mb-2">
+            <div class="col-md-4">
+              <input type="text" class="form-control" name="variacoes" placeholder="Descrição da Variação" required>
             </div>
-
-            <div class="mb-3">
-                <label class="form-label">Tipo de Retorno</label>
-                <select name="tipo_retorno" class="form-select" required>
-                    <option value="valor">Apenas valor (ex: 220)</option>
-                    <option value="texto">Texto (ex: 220V)</option>
-                    <option value="completo">Completo (ex: Voltagem: 220V)</option>
-                </select>
+            <div class="col-md-8">
+              <input type="text" class="form-control" name="padroes" placeholder="Padrões separados por vírgula" required>
             </div>
-
-            <div class="mb-3">
-                <label class="form-label">Variações</label>
-                <div id="variacoes-container">
-                    <div class="input-group mb-2">
-                        <input type="text" name="variacoes" class="form-control" placeholder="Ex: 220V">
-                        <input type="text" name="padroes" class="form-control" placeholder="Padrões separados por vírgula">
-                        <input type="text" name="prioridade" class="form-control" placeholder="Prioridade (mesmo texto da variação)">
-                    </div>
-                </div>
-                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addVariacao()">+ Adicionar Variação</button>
-            </div>
-
-            <button type="submit" class="btn btn-primary w-100 mt-3">
-                <i class="bi bi-check-circle"></i> Salvar Atributo
-            </button>
+          </div>
         </div>
-    </div>
-</form>
+        <button type="button" class="btn btn-sm btn-secondary" onclick="addVariacao()">+ Adicionar Variação</button>
+      </div>
 
-{% if atributos %}
-<div class="card">
-    <div class="card-header"><strong>Atributos Configurados</strong></div>
-    <div class="card-body p-0">
-        <table class="table table-striped m-0">
-            <thead>
-                <tr>
-                    <th>Nome</th>
-                    <th>Tipo de Retorno</th>
-                    <th>Variações</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for nome, config in atributos.items() %}
-                <tr>
-                    <td>{{ nome }}</td>
-                    <td>{{ config.tipo_retorno }}</td>
-                    <td>
-                        {% for var in config.variacoes %}
-                            <span class="badge bg-secondary">{{ var.descricao }}</span>
-                        {% endfor %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-{% endif %}
+      <div class="mb-3">
+        <label class="form-label">Ordem de Prioridade:</label>
+        <textarea name="prioridade" class="form-control" rows="2" placeholder="Informe as variações em ordem de prioridade, separadas por vírgula" required></textarea>
+      </div>
 
-<script>
+      <div class="d-grid">
+        <button type="submit" class="btn btn-primary">Salvar Atributo</button>
+      </div>
+    </form>
+
+    {% if atributos %}
+      <hr>
+      <h4 class="mt-5">🔎 Atributos Configurados</h4>
+      <ul class="list-group mt-3">
+        {% for nome, config in atributos.items() %}
+          <li class="list-group-item">
+            <strong>{{ nome }}</strong> — Tipo: {{ config.tipo_retorno }} — Variações: {{ config.variacoes | length }}
+          </li>
+        {% endfor %}
+      </ul>
+      <div class="text-end mt-4">
+        <a href="{{ url_for('processar') }}" class="btn btn-success">➡️ Processar Planilha</a>
+      </div>
+    {% endif %}
+  </div>
+
+  <script>
     function addVariacao() {
-        const container = document.getElementById("variacoes-container");
-        const div = document.createElement("div");
-        div.className = "input-group mb-2";
-        div.innerHTML = `
-            <input type="text" name="variacoes" class="form-control" placeholder="Ex: 220V">
-            <input type="text" name="padroes" class="form-control" placeholder="Padrões separados por vírgula">
-            <input type="text" name="prioridade" class="form-control" placeholder="Prioridade (mesmo texto da variação)">
-        `;
-        container.appendChild(div);
+      const container = document.getElementById("variacoes-container");
+      const linha = document.createElement("div");
+      linha.className = "row g-2 mb-2";
+      linha.innerHTML = `
+        <div class="col-md-4">
+          <input type="text" class="form-control" name="variacoes" placeholder="Descrição da Variação" required>
+        </div>
+        <div class="col-md-8">
+          <input type="text" class="form-control" name="padroes" placeholder="Padrões separados por vírgula" required>
+        </div>
+      `;
+      container.appendChild(linha);
     }
-</script>
-{% endblock %}
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
