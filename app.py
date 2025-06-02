@@ -1,16 +1,12 @@
-import os
-import json
-import re
+from flask import Flask, render_template, request, redirect, url_for, send_file, jsonify
 import pandas as pd
-from flask import Flask, render_template, request, redirect, url_for, session, send_file, flash
-from werkzeug.utils import secure_filename
+import json
+import os
+from io import BytesIO
 
 app = Flask(__name__)
-app.secret_key = 'chave-secreta'
-UPLOAD_FOLDER = 'uploads'
-RESULT_FOLDER = 'resultados'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(RESULT_FOLDER, exist_ok=True)
+
+atributos = {}
 
 @app.route('/')
 def index():
@@ -18,121 +14,82 @@ def index():
 
 @app.route('/modelo')
 def modelo():
-    modelo_df = pd.DataFrame(columns=['ID', 'Descrição'])
-    modelo_df.loc[0] = ['001', 'ventilador de paredes 110V']
-    modelo_df.loc[1] = ['002', 'luminária de teto 220V branca']
-    path = os.path.join(RESULT_FOLDER, 'modelo_descricoes.xlsx')
-    modelo_df.to_excel(path, index=False)
-    return send_file(path, as_attachment=True)
+    df = pd.DataFrame(columns=['ID', 'Descricao'])
+    df.loc[0] = ['001', 'exemplo de descricao 110v']
+    df.loc[1] = ['002', 'exemplo de descricao 220v']
 
-@app.route('/upload', methods=['POST'])
-def upload():
-    file = request.files['arquivo']
-    if file:
-        filename = secure_filename(file.filename)
-        path = os.path.join(UPLOAD_FOLDER, filename)
-        file.save(path)
-        session['planilha_path'] = path
-        df = pd.read_excel(path)
-        session['colunas'] = list(df.columns)
-        session['atributos'] = {}
-        return redirect(url_for('configurar'))
-    flash('Nenhum arquivo selecionado.', 'error')
-    return redirect(url_for('index'))
+    output = BytesIO()
+    df.to_excel(output, index=False)
+    output.seek(0)
+    return send_file(output, download_name="modelo_descricoes.xlsx", as_attachment=True)
 
 @app.route('/configurar', methods=['GET', 'POST'])
 def configurar():
-    if request.method == 'POST':
-        nome = request.form['nome']
-        tipo_retorno = request.form['tipo_retorno']
-        variacoes = request.form.getlist('variacoes')
-        padroes = request.form.getlist('padroes')
-        prioridade = request.form.getlist('prioridade')
+    nome = request.form.get('nome')
+    variacoes = atributos.get(nome, {}).get('variacoes', [])
+    return render_template('configurar.html', atributos=atributos, variacoes=variacoes, atributo_em_edicao=atributos.get(nome))
 
-        atributo = {
-            'nome': nome,
-            'tipo_retorno': tipo_retorno,
-            'variacoes': []
-        }
+@app.route('/adicionar_variacao', methods=['POST'])
+def adicionar_variacao():
+    nome = request.form.get('nome')
+    variacoes_raw = request.form.to_dict(flat=False)
+    variacoes = []
+    i = 0
+    while f'variacoes[{i}][descricao]' in variacoes_raw:
+        descricao = variacoes_raw.get(f'variacoes[{i}][descricao]', [''])[0]
+        padroes = variacoes_raw.get(f'variacoes[{i}][padroes]', [''])[0].splitlines()
+        variacoes.append({'descricao': descricao, 'padroes': [p.strip() for p in padroes if p.strip()]})
+        i += 1
+    atributos[nome] = {'nome': nome, 'variacoes': variacoes, 'tipo_retorno': 'texto'}
+    return redirect(url_for('configurar'))
 
-        for idx, desc in enumerate(variacoes):
-            atributo['variacoes'].append({
-                'descricao': desc,
-                'padroes': [p.strip() for p in padroes[idx].split(',') if p.strip()]
-            })
-
-        atributo['variacoes'] = [
-            next(v for v in atributo['variacoes'] if v['descricao'] == nome) if nome in prioridade else v
-            for nome in prioridade
-            for v in atributo['variacoes']
-            if v['descricao'] == nome
-        ]
-
-        atributos = session.get('atributos', {})
-        atributos[nome] = atributo
-        session['atributos'] = atributos
-
-        flash(f'Atributo "{nome}" configurado.', 'success')
+@app.route('/salvar_prioridade', methods=['POST'])
+def salvar_prioridade():
+    ordem = request.form.get('ordem_prioridade').split(',')
+    nome = request.args.get('nome')
+    if not nome or nome not in atributos:
         return redirect(url_for('configurar'))
+    variacoes_antigas = atributos[nome]['variacoes']
+    variacoes_reordenadas = []
+    for desc in ordem:
+        for v in variacoes_antigas:
+            if v['descricao'] == desc:
+                variacoes_reordenadas.append(v)
+    atributos[nome]['variacoes'] = variacoes_reordenadas
+    return redirect(url_for('configurar'))
 
-    atributos = session.get('atributos', {})
-    return render_template('configurar.html', atributos=atributos)
+@app.route('/editar/<nome>')
+def editar_configuracao(nome):
+    if nome in atributos:
+        return render_template('configurar.html', atributos=atributos, variacoes=atributos[nome]['variacoes'], atributo_em_edicao=atributos[nome])
+    return redirect(url_for('configurar'))
+
+@app.route('/excluir/<nome>')
+def excluir_configuracao(nome):
+    if nome in atributos:
+        del atributos[nome]
+    return redirect(url_for('configurar'))
+
+@app.route('/exportar_configuracoes')
+def exportar_configuracoes():
+    output = BytesIO()
+    output.write(json.dumps(atributos, indent=4, ensure_ascii=False).encode('utf-8'))
+    output.seek(0)
+    return send_file(output, download_name="configuracoes.json", as_attachment=True)
+
+@app.route('/importar_configuracoes', methods=['POST'])
+def importar_configuracoes():
+    file = request.files.get('arquivo')
+    if file:
+        dados = json.load(file)
+        if isinstance(dados, dict):
+            atributos.clear()
+            atributos.update(dados)
+    return redirect(url_for('configurar'))
 
 @app.route('/processar')
 def processar():
-    planilha_path = session.get('planilha_path')
-    atributos = session.get('atributos', {})
-
-    if not planilha_path or not atributos:
-        flash('Envie uma planilha e configure os atributos antes.', 'error')
-        return redirect(url_for('index'))
-
-    df = pd.read_excel(planilha_path)
-    for nome, config in atributos.items():
-        tipo = config['tipo_retorno']
-        variacoes = config['variacoes']
-        resultados = []
-
-        for _, row in df.iterrows():
-            desc = str(row.get('Descrição', '')).lower()
-            encontrado = ''
-            for var in variacoes:
-                for padrao in var['padroes']:
-                    if re.search(re.escape(padrao.lower()), desc):
-                        if tipo == 'valor':
-                            numeros = re.findall(r'\d+', padrao)
-                            encontrado = numeros[0] if numeros else ''
-                        elif tipo == 'texto':
-                            encontrado = var['descricao']
-                        elif tipo == 'completo':
-                            encontrado = f"{nome}: {var['descricao']}"
-                        break
-                if encontrado:
-                    break
-            resultados.append(encontrado)
-
-        df[nome] = resultados
-
-    output_path = os.path.join(RESULT_FOLDER, 'resultado.xlsx')
-    df.to_excel(output_path, index=False)
-    session['resultado_path'] = output_path
-    return redirect(url_for('resultado'))
-
-@app.route('/resultado')
-def resultado():
-    atributos = session.get('atributos', {})
-    resultado_path = session.get('resultado_path')
-    if not resultado_path:
-        return redirect(url_for('index'))
-    df = pd.read_excel(resultado_path)
-    return render_template('resultados.html', df=df.head(20).to_dict(orient='records'), atributos=list(atributos.keys()))
-
-@app.route('/download')
-def download():
-    path = session.get('resultado_path')
-    if not path:
-        return redirect(url_for('index'))
-    return send_file(path, as_attachment=True)
+    return render_template('resultados.html')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
+    app.run(debug=True)
