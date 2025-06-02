@@ -19,14 +19,9 @@
     <nav class="nav">
         <div class="container">
             <a href="{{ url_for('index') }}">Início</a>
-            {% if extrator.dados_originais is not none %}
-                <a href="{{ url_for('configuracao') }}">Configuração</a>
-            {% endif %}
-            {% if extrator.dados_processados is not none %}
-                <a href="{{ url_for('resultados') }}">Resultados</a>
-                <a href="{{ url_for('exportar') }}">Exportar</a>
-            {% endif %}
-            <a href="{{ url_for('gerar_modelo') }}">Modelo de Planilha</a>
+            <a href="{{ url_for('configurar') }}">Configuração</a>
+            <a href="{{ url_for('processar') }}">Resultados</a>
+            <a href="{{ url_for('baixar_modelo') }}">Modelo de Planilha</a>
         </div>
     </nav>
 
@@ -35,7 +30,10 @@
         {% with mensagens = get_flashed_messages(with_categories=true) %}
             {% if mensagens %}
                 {% for categoria, mensagem in mensagens %}
-                    <div class="flash {{ categoria }}">{{ mensagem }}</div>
+                    <div class="alert alert-{{ 'danger' if categoria == 'error' else categoria }} alert-dismissible fade show" role="alert">
+                        {{ mensagem }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+                    </div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
@@ -51,7 +49,7 @@
 
     <footer class="mt-5 py-3 bg-light">
         <div class="container text-center">
-            <p class="mb-0">&copy; {{ now.year }} Sistema de Extração de Atributos. Todos os direitos reservados.</p>
+            <p class="mb-0">&copy; {{ current_year }} Sistema de Extração de Atributos. Todos os direitos reservados.</p>
             <p class="text-muted small mt-2">Versão 1.0.0</p>
         </div>
     </footer>
