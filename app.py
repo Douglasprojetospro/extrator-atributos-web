@@ -16,6 +16,15 @@ os.makedirs(RESULT_FOLDER, exist_ok=True)
 def index():
     return render_template('index.html')
 
+@app.route('/modelo')
+def modelo():
+    modelo_df = pd.DataFrame(columns=['ID', 'Descrição'])
+    modelo_df.loc[0] = ['001', 'ventilador de paredes 110V']
+    modelo_df.loc[1] = ['002', 'luminária de teto 220V branca']
+    path = os.path.join(RESULT_FOLDER, 'modelo_descricoes.xlsx')
+    modelo_df.to_excel(path, index=False)
+    return send_file(path, as_attachment=True)
+
 @app.route('/upload', methods=['POST'])
 def upload():
     file = request.files['arquivo']
