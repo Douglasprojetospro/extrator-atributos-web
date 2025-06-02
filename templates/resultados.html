@@ -1,43 +1,35 @@
 {% extends 'base.html' %}
-{% block title %}Resultados da Extração{% endblock %}
+
 {% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Resultados Processados</h2>
+    <p><strong>Arquivo:</strong> {{ nome_arquivo }}</p>
+    <p><strong>Total de Linhas:</strong> {{ total_linhas }}</p>
 
-<h2 class="mb-4">📊 Resultados da Extração</h2>
-
-{% if nome_arquivo %}
-<div class="alert alert-success">
-    <strong>Arquivo processado:</strong> {{ nome_arquivo }} ({{ total_linhas }} registros)
-</div>
-{% endif %}
-
-{% if dados and dados.columns %}
-<div class="table-responsive">
-    <table class="table table-bordered table-hover">
-        <thead class="table-light">
-            <tr>
-                {% for coluna in dados.columns %}
-                <th>{{ coluna }}</th>
+    <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+            <thead class="table-dark">
+                <tr>
+                    {% for col in dados.columns %}
+                    <th>{{ col }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for _, row in dados.iterrows() %}
+                <tr>
+                    {% for col in dados.columns %}
+                    <td>{{ row[col] }}</td>
+                    {% endfor %}
+                </tr>
                 {% endfor %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for linha in dados.values %}
-            <tr>
-                {% for valor in linha %}
-                <td>{{ valor }}</td>
-                {% endfor %}
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+            </tbody>
+        </table>
+    </div>
 
-<div class="d-flex justify-content-between mt-4">
-    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">← Voltar</a>
-    <a href="{{ url_for('baixar_resultado') }}" class="btn btn-success">📥 Baixar Resultado</a>
+    <div class="mt-4">
+        <a href="{{ url_for('baixar_resultado') }}" class="btn btn-success">Baixar Resultado Excel</a>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Voltar ao Início</a>
+    </div>
 </div>
-{% else %}
-<p>Nenhum resultado para exibir. Faça o upload de uma planilha e processe os dados.</p>
-{% endif %}
-
 {% endblock %}
