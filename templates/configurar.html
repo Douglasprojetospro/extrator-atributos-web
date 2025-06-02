@@ -1,94 +1,470 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="container mt-4">
-    <h3>🔧 Configuração de Atributos</h3>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuração de Atributos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .variation-item { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+        .pattern-item { display: inline-block; margin-right: 5px; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Configuração de Atributos</h1>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-    <form method="POST" action="/adicionar-variacao">
-        <div class="mb-3">
-            <label for="nome" class="form-label">Nome do Atributo</label>
-            <input type="text" class="form-control" name="nome" id="nome" required value="{{ atributo_em_edicao.nome if atributo_em_edicao }}">
-        </div>
-
-        <h5>Variações</h5>
-        <div id="variacoes-container">
-            {% for i, variacao in enumerate(variacoes or [{}]) %}
-            <div class="card p-3 mb-2 variacao-item">
-                <div class="mb-2">
-                    <label class="form-label">Descrição da Variação</label>
-                    <input type="text" class="form-control" name="variacoes[{{ i }}][descricao]" value="{{ variacao.descricao }}" required>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        Adicionar Novo Atributo
+                    </div>
+                    <div class="card-body">
+                        <form id="form-atributo">
+                            <div class="mb-3">
+                                <label for="nome-atributo" class="form-label">Nome do Atributo</label>
+                                <input type="text" class="form-control" id="nome-atributo" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Tipo de Retorno</label>
+                                <select class="form-select" id="tipo-retorno" required>
+                                    <option value="">Selecione...</option>
+                                    <option value="valor">Valor (ex: '110')</option>
+                                    <option value="texto">Texto Padrão (ex: '110V')</option>
+                                    <option value="completo">Descrição Completa (ex: 'Voltagem: 110V')</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Variações</label>
+                                <div id="variacoes-container">
+                                    <!-- Variações serão adicionadas aqui -->
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btn-add-variacao">
+                                    Adicionar Variação
+                                </button>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">Registrar Atributo</button>
+                        </form>
+                    </div>
                 </div>
-                <div>
-                    <label class="form-label">Padrões (um por linha)</label>
-                    <textarea class="form-control" name="variacoes[{{ i }}][padroes]" rows="3">{{ variacao.padroes | join('\n') }}</textarea>
+
+                <div class="card">
+                    <div class="card-header">
+                        Gerenciar Configurações
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ url_for('salvar_configuracao') }}" method="POST" class="mb-3">
+                            <div class="input-group">
+                                <input type="text" class="form-control" name="nome_arquivo" placeholder="Nome do arquivo" required>
+                                <button type="submit" class="btn btn-success">Salvar Configuração</button>
+                            </div>
+                        </form>
+                        
+                        <form action="{{ url_for('carregar_configuracao') }}" method="POST">
+                            <div class="input-group mb-3">
+                                <select class="form-select" name="config_file" required>
+                                    <option value="">Selecione uma configuração...</option>
+                                    {% for file in config_files %}
+                                        <option value="{{ file }}">{{ file }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-primary">Carregar Configuração</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
-            {% endfor %}
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Atributos Configurados</span>
+                        <button class="btn btn-sm btn-success" id="btn-processar">Processar Dados</button>
+                    </div>
+                    <div class="card-body">
+                        <div id="atributos-lista">
+                            <!-- Atributos serão carregados aqui via JavaScript -->
+                            <p class="text-muted">Nenhum atributo configurado ainda.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
+    </div>
 
-        <button type="submit" class="btn btn-success mt-2">Salvar Variações</button>
-    </form>
+    <!-- Modal para edição de atributo -->
+    <div class="modal fade" id="editarAtributoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Atributo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="modal-editar-conteudo">
+                    <!-- Conteúdo será carregado via JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
 
-    {% if atributo_em_edicao %}
-    <form method="POST" action="/salvar-prioridade" class="mt-4">
-        <h5>Prioridade das Variações</h5>
-        <p>Arraste para ordenar:</p>
-        <ul id="lista-prioridade" class="list-group">
-            {% for v in atributo_em_edicao.variacoes %}
-            <li class="list-group-item">{{ v.descricao }}</li>
-            {% endfor %}
-        </ul>
-        <input type="hidden" name="ordem_prioridade" id="ordem_prioridade">
-        <button type="submit" class="btn btn-primary mt-3">Salvar Configuração</button>
-    </form>
-    {% endif %}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Variável de template para variação
+        const variationTemplate = `
+            <div class="variation-item">
+                <div class="d-flex justify-content-between mb-2">
+                    <input type="text" class="form-control form-control-sm variation-desc" placeholder="Descrição da variação" required>
+                    <button type="button" class="btn btn-sm btn-outline-danger ms-2 remove-variation">×</button>
+                </div>
+                <div class="variation-patterns">
+                    <input type="text" class="form-control form-control-sm mb-2 new-pattern" placeholder="Novo padrão">
+                    <button type="button" class="btn btn-sm btn-outline-secondary add-pattern">Adicionar Padrão</button>
+                    <div class="patterns-list mt-2"></div>
+                </div>
+            </div>
+        `;
 
-    {% if atributos %}
-    <hr>
-    <h4>Atributos Configurados</h4>
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Nome</th>
-                <th>Variações</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for nome, config in atributos.items() %}
-            <tr>
-                <td>{{ nome }}</td>
-                <td>{{ config.variacoes | map(attribute='descricao') | join(', ') }}</td>
-                <td>
-                    <a href="/editar/{{ nome }}" class="btn btn-sm btn-warning">Editar</a>
-                    <a href="/excluir/{{ nome }}" class="btn btn-sm btn-danger">Excluir</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    <a href="/exportar-configuracoes" class="btn btn-outline-secondary">Exportar Configurações</a>
-    <form method="POST" action="/importar-configuracoes" enctype="multipart/form-data" class="d-inline-block">
-        <input type="file" name="arquivo" class="form-control d-inline w-auto" required>
-        <button type="submit" class="btn btn-outline-secondary">Importar</button>
-    </form>
-    {% endif %}
-</div>
+        // Adiciona uma nova variação
+        document.getElementById('btn-add-variacao').addEventListener('click', function() {
+            const container = document.getElementById('variacoes-container');
+            const div = document.createElement('div');
+            div.innerHTML = variationTemplate;
+            container.appendChild(div);
+            
+            // Configura eventos para os novos elementos
+            setupVariationEvents(div);
+        });
 
-<script>
-    // Drag and drop para ordenar prioridades
-    document.addEventListener('DOMContentLoaded', () => {
-        const lista = document.getElementById('lista-prioridade');
-        if (lista) {
-            new Sortable(lista, {
-                animation: 150,
-                onEnd: () => {
-                    const ordem = Array.from(lista.children).map(li => li.textContent.trim());
-                    document.getElementById('ordem_prioridade').value = ordem.join(',');
+        // Configura eventos para uma variação
+        function setupVariationEvents(variationElement) {
+            // Remover variação
+            variationElement.querySelector('.remove-variation').addEventListener('click', function() {
+                variationElement.remove();
+            });
+            
+            // Adicionar padrão
+            variationElement.querySelector('.add-pattern').addEventListener('click', function() {
+                const patternInput = variationElement.querySelector('.new-pattern');
+                const pattern = patternInput.value.trim();
+                
+                if (pattern) {
+                    const patternsList = variationElement.querySelector('.patterns-list');
+                    const patternItem = document.createElement('span');
+                    patternItem.className = 'pattern-item badge bg-light text-dark';
+                    patternItem.innerHTML = `
+                        ${pattern}
+                        <input type="hidden" name="patterns" value="${pattern}">
+                        <button type="button" class="btn-close btn-close-white btn-sm ms-1 remove-pattern"></button>
+                    `;
+                    patternsList.appendChild(patternItem);
+                    patternInput.value = '';
+                    
+                    // Remover padrão
+                    patternItem.querySelector('.remove-pattern').addEventListener('click', function() {
+                        patternItem.remove();
+                    });
+                }
+            });
+            
+            // Permitir adicionar padrão com Enter
+            variationElement.querySelector('.new-pattern').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    variationElement.querySelector('.add-pattern').click();
                 }
             });
         }
-    });
-</script>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-{% endblock %}
+
+        // Formulário de atributo
+        document.getElementById('form-atributo').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const nomeAtributo = document.getElementById('nome-atributo').value;
+            const tipoRetorno = document.getElementById('tipo-retorno').value;
+            const variacoes = [];
+            
+            // Coletar todas as variações
+            document.querySelectorAll('.variation-item').forEach(variation => {
+                const descricao = variation.querySelector('.variation-desc').value;
+                const padroes = Array.from(variation.querySelectorAll('input[name="patterns"]')).map(input => input.value);
+                
+                if (descricao && padroes.length > 0) {
+                    variacoes.push({
+                        descricao: descricao,
+                        padroes: padroes
+                    });
+                }
+            });
+            
+            if (variacoes.length === 0) {
+                alert('Adicione pelo menos uma variação com padrões!');
+                return;
+            }
+            
+            // Enviar para o servidor
+            fetch("{{ url_for('configuracao') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    nome: nomeAtributo,
+                    tipo_retorno: tipoRetorno,
+                    variacoes: variacoes
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Atributo adicionado com sucesso!');
+                    document.getElementById('form-atributo').reset();
+                    document.getElementById('variacoes-container').innerHTML = '';
+                    loadAtributos();
+                } else {
+                    alert('Erro: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Erro ao adicionar atributo');
+            });
+        });
+
+        // Carrega a lista de atributos
+        function loadAtributos() {
+            fetch("{{ url_for('gerenciar_atributos') }}")
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('atributos-lista');
+                    
+                    if (Object.keys(data).length === 0) {
+                        container.innerHTML = '<p class="text-muted">Nenhum atributo configurado ainda.</p>';
+                        return;
+                    }
+                    
+                    let html = '<div class="list-group">';
+                    for (const [nome, config] of Object.entries(data)) {
+                        html += `
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>${nome}</strong> (${config.tipo_retorno})
+                                    <div class="text-muted small">${config.variacoes.length} variações</div>
+                                </div>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-primary me-1 edit-atributo" data-nome="${nome}">Editar</button>
+                                    <button class="btn btn-sm btn-outline-danger delete-atributo" data-nome="${nome}">Remover</button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    html += '</div>';
+                    container.innerHTML = html;
+                    
+                    // Configurar eventos para os botões
+                    document.querySelectorAll('.delete-atributo').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            if (confirm(`Tem certeza que deseja remover o atributo "${this.dataset.nome}"?`)) {
+                                fetch("{{ url_for('gerenciar_atributos') }}?nome=" + encodeURIComponent(this.dataset.nome), {
+                                    method: 'DELETE'
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        loadAtributos();
+                                    } else {
+                                        alert('Erro ao remover atributo');
+                                    }
+                                });
+                            }
+                        });
+                    });
+                    
+                    document.querySelectorAll('.edit-atributo').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const nome = this.dataset.nome;
+                            const config = data[nome];
+                            
+                            // Preencher modal com os dados do atributo
+                            let modalContent = `
+                                <form id="form-editar-atributo">
+                                    <input type="hidden" name="nome" value="${nome}">
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Tipo de Retorno</label>
+                                        <select class="form-select" name="tipo_retorno" required>
+                                            <option value="valor" ${config.tipo_retorno === 'valor' ? 'selected' : ''}>Valor (ex: '110')</option>
+                                            <option value="texto" ${config.tipo_retorno === 'texto' ? 'selected' : ''}>Texto Padrão (ex: '110V')</option>
+                                            <option value="completo" ${config.tipo_retorno === 'completo' ? 'selected' : ''}>Descrição Completa (ex: 'Voltagem: 110V')</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Variações</label>
+                                        <div id="modal-variacoes-container">
+                            `;
+                            
+                            // Adicionar variações ao modal
+                            config.variacoes.forEach(variacao => {
+                                modalContent += `
+                                    <div class="variation-item">
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <input type="text" class="form-control form-control-sm variation-desc" 
+                                                   value="${variacao.descricao}" placeholder="Descrição da variação" required>
+                                            <button type="button" class="btn btn-sm btn-outline-danger ms-2 remove-variation">×</button>
+                                        </div>
+                                        <div class="variation-patterns">
+                                            <input type="text" class="form-control form-control-sm mb-2 new-pattern" placeholder="Novo padrão">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary add-pattern">Adicionar Padrão</button>
+                                            <div class="patterns-list mt-2">
+                                `;
+                                
+                                // Adicionar padrões existentes
+                                variacao.padroes.forEach(padrao => {
+                                    modalContent += `
+                                        <span class="pattern-item badge bg-light text-dark">
+                                            ${padrao}
+                                            <input type="hidden" name="patterns" value="${padrao}">
+                                            <button type="button" class="btn-close btn-close-white btn-sm ms-1 remove-pattern"></button>
+                                        </span>
+                                    `;
+                                });
+                                
+                                modalContent += `
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                            
+                            modalContent += `
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btn-modal-add-variacao">
+                                            Adicionar Variação
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-end">
+                                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                                    </div>
+                                </form>
+                            `;
+                            
+                            document.getElementById('modal-editar-conteudo').innerHTML = modalContent;
+                            
+                            // Configurar eventos no modal
+                            document.querySelectorAll('.variation-item').forEach(variation => {
+                                setupVariationEvents(variation);
+                            });
+                            
+                            document.getElementById('btn-modal-add-variacao').addEventListener('click', function() {
+                                const container = document.getElementById('modal-variacoes-container');
+                                const div = document.createElement('div');
+                                div.innerHTML = variationTemplate;
+                                container.appendChild(div);
+                                setupVariationEvents(div);
+                            });
+                            
+                            // Formulário de edição
+                            document.getElementById('form-editar-atributo').addEventListener('submit', function(e) {
+                                e.preventDefault();
+                                
+                                const formData = new FormData(this);
+                                const tipoRetorno = formData.get('tipo_retorno');
+                                const variacoes = [];
+                                
+                                // Coletar variações do modal
+                                document.querySelectorAll('#modal-variacoes-container .variation-item').forEach(variation => {
+                                    const descricao = variation.querySelector('.variation-desc').value;
+                                    const padroes = Array.from(variation.querySelectorAll('input[name="patterns"]')).map(input => input.value);
+                                    
+                                    if (descricao && padroes.length > 0) {
+                                        variacoes.push({
+                                            descricao: descricao,
+                                            padroes: padroes
+                                        });
+                                    }
+                                });
+                                
+                                if (variacoes.length === 0) {
+                                    alert('O atributo deve ter pelo menos uma variação com padrões!');
+                                    return;
+                                }
+                                
+                                // Enviar para o servidor
+                                fetch("{{ url_for('gerenciar_atributos') }}", {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        nome: nome,
+                                        tipo_retorno: tipoRetorno,
+                                        variacoes: variacoes
+                                    })
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        alert('Atributo atualizado com sucesso!');
+                                        loadAtributos();
+                                        bootstrap.Modal.getInstance(document.getElementById('editarAtributoModal')).hide();
+                                    } else {
+                                        alert('Erro: ' + data.message);
+                                    }
+                                });
+                            });
+                            
+                            // Mostrar modal
+                            const modal = new bootstrap.Modal(document.getElementById('editarAtributoModal'));
+                            modal.show();
+                        });
+                    });
+                });
+        }
+
+        // Botão para processar dados
+        document.getElementById('btn-processar')?.addEventListener('click', function() {
+            if (Object.keys({{ extrator.atributos|tojson|safe }}).length === 0) {
+                alert('Adicione pelo menos um atributo antes de processar!');
+                return;
+            }
+            
+            fetch("{{ url_for('processar') }}", {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = "{{ url_for('resultados') }}";
+                } else {
+                    alert('Erro ao processar: ' + data.error);
+                }
+            });
+        });
+
+        // Carregar atributos ao iniciar
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAtributos();
+            
+            // Adiciona uma variação inicial se o container estiver vazio
+            if (document.getElementById('variacoes-container').children.length === 0) {
+                document.getElementById('btn-add-variacao').click();
+            }
+        });
+    </script>
+</body>
+</html>
 
