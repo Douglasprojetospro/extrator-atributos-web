@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import datetime  # Adicionado import para corrigir o erro
 import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, send_file, flash, jsonify
 from werkzeug.utils import secure_filename
@@ -87,7 +88,7 @@ extrator = ExtratorAtributos()
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', datetime=datetime)  # Passando datetime para o template
 
 @app.route('/upload', methods=['POST'])
 def upload_arquivo():
@@ -148,7 +149,7 @@ def configuracao():
         if file.endswith('.json'):
             config_files.append(file)
 
-    return render_template('configuracao.html', config_files=config_files)
+    return render_template('configuracao.html', config_files=config_files, datetime=datetime)  # Passando datetime
 
 @app.route('/api/atributos', methods=['GET', 'DELETE', 'PUT'])
 def gerenciar_atributos():
@@ -229,7 +230,7 @@ def resultados():
 
     # Converter para HTML mantendo apenas as primeiras 50 linhas para exibição
     dados_html = extrator.dados_processados.head(50).to_html(classes='table table-striped', index=False)
-    return render_template('resultados.html', dados=dados_html)
+    return render_template('resultados.html', dados=dados_html, datetime=datetime)  # Passando datetime
 
 @app.route('/exportar')
 def exportar():
