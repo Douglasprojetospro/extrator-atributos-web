@@ -1,39 +1,45 @@
 {% extends 'base.html' %}
 {% block title %}Configurar Atributos{% endblock %}
 {% block content %}
-<h2 class="mb-4">⚙️ Configurar Atributos</h2>
+<h2 class="mb-4">⚙️ Configuração de Atributos</h2>
 
-<form method="POST">
+<form method="POST" action="{{ url_for('salvar_configuracao') }}">
     <div class="mb-3">
         <label for="nome" class="form-label">Nome do Atributo</label>
-        <input type="text" class="form-control" name="nome" required>
+        <input type="text" class="form-control" id="nome" name="nome" value="{{ atributo_em_edicao.nome if atributo_em_edicao else '' }}" required>
     </div>
 
-    <div class="mb-3">
-        <label for="tipo_retorno" class="form-label">Formato de Retorno</label>
-        <select class="form-select" name="tipo_retorno">
-            <option value="valor">Valor (ex: '110')</option>
-            <option value="texto">Texto Padrão (ex: '110V')</option>
-            <option value="completo">Descrição Completa (ex: 'Voltagem: 110V')</option>
-        </select>
+    <div id="variacoes-container">
+        <h5>Variações</h5>
+        {% for idx, variacao in variacoes %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="mb-2">
+                    <label class="form-label">Descrição da Variação</label>
+                    <input type="text" class="form-control" name="variacoes[{{ idx }}][descricao]" value="{{ variacao.descricao }}" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Padrões (um por linha)</label>
+                    <textarea class="form-control" name="variacoes[{{ idx }}][padroes]" rows="3" required>{{ variacao.padroes|join('\n') }}</textarea>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
     </div>
 
-    <div class="mb-3">
-        <label class="form-label">Variações (uma por linha)</label>
-        <textarea class="form-control" name="variacoes" rows="4" placeholder="Exemplo:\n110V\n220V\nBivolt" required></textarea>
-    </div>
+    <button type="submit" class="btn btn-success mb-4">Salvar Atributo</button>
+</form>
 
-    <div class="mb-3">
-        <label class="form-label">Padrões de Reconhecimento (mesma ordem das variações, separados por vírgula)</label>
-        <textarea class="form-control" name="padroes" rows="4" placeholder="Exemplo:\n110,v110\n220,v220\nbivolt" required></textarea>
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">Prioridade (ordem das variações)</label>
-        <input type="text" class="form-control" name="prioridade" placeholder="Ex: Bivolt, 220V, 110V" required>
-    </div>
-
-    <button type="submit" class="btn btn-success">Salvar Atributo</button>
+<form method="POST" action="{{ url_for('salvar_prioridade') }}">
+    <h5>Prioridade das Variações</h5>
+    <p class="text-muted">Arraste para ordenar da mais importante para a menos importante:</p>
+    <ul class="list-group mb-3" id="prioridade-lista">
+        {% for variacao in variacoes %}
+        <li class="list-group-item" data-id="{{ variacao.descricao }}">{{ variacao.descricao }}</li>
+        {% endfor %}
+    </ul>
+    <input type="hidden" name="ordem_prioridade" id="ordemPrioridadeInput">
+    <button type="submit" class="btn btn-primary">Salvar Prioridade</button>
 </form>
 
 <hr>
@@ -42,8 +48,12 @@
     {% for nome, attr in atributos.items() %}
     <li class="list-group-item d-flex justify-content-between align-items-center">
         <div>
-            <strong>{{ nome }}</strong><br>
-            <small>Tipo: {{ attr.tipo_retorno }} | Variações: {{ attr.variacoes|length }}</small>
+            <strong>{{ nome }}</strong>
+            <small class="d-block">Variações: {{ attr.variacoes|length }}</small>
+        </div>
+        <div>
+            <a href="{{ url_for('editar_configuracao', nome=nome) }}" class="btn btn-sm btn-warning">Editar</a>
+            <a href="{{ url_for('excluir_configuracao', nome=nome) }}" class="btn btn-sm btn-danger">Excluir</a>
         </div>
     </li>
     {% else %}
@@ -51,8 +61,29 @@
     {% endfor %}
 </ul>
 
-<div class="mt-4">
-    <a href="{{ url_for('processar') }}" class="btn btn-primary">Processar Planilha</a>
+<div class="mt-4 d-flex gap-2">
+    <a href="{{ url_for('exportar_configuracoes') }}" class="btn btn-outline-secondary">📥 Exportar Configurações</a>
+    <form method="POST" action="{{ url_for('importar_configuracoes') }}" enctype="multipart/form-data" class="d-inline">
+        <input type="file" name="arquivo" accept=".json" required>
+        <button type="submit" class="btn btn-outline-primary">📤 Importar Configurações</button>
+    </form>
+    <a href="{{ url_for('processar') }}" class="btn btn-success ms-auto">Ir para Processamento</a>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const lista = document.getElementById('prioridade-lista');
+        if (lista) {
+            new Sortable(lista, {
+                animation: 150,
+                onEnd: function () {
+                    const ordem = Array.from(lista.children).map(li => li.dataset.id);
+                    document.getElementById('ordemPrioridadeInput').value = ordem.join(',');
+                }
+            });
+        }
+    });
+</script>
 {% endblock %}
 
