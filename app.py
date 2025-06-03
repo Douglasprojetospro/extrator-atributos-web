@@ -149,7 +149,7 @@ class ExtratorAtributos:
                 'Atributo': nome,
                 'Variações': ", ".join([v['descricao'] for v in config['variacoes']]),
                 'Padrões': sum(len(v['padroes']) for v in config['variacoes']),
-                'Prioridade': config['variacoes'][0]['descricao'],
+                'Prioridade': config['variacoes'][0]['descricao'],  # Mostra a primeira como a de maior prioridade
                 'Formato': "Valor" if config['tipo_retorno'] == "valor" else "Texto" if config['tipo_retorno'] == "texto" else "Completo"
             }
             for nome, config in st.session_state.atributos.items()
@@ -282,7 +282,11 @@ class ExtratorAtributos:
     
     def render_passo_variacoes(self):
         """Renderiza a etapa de definição das variações"""
-        default_var = "\n".join([v['descricao'] for v in st.session_state.atributo_atual.get('variacoes', [])])
+        # Inicializa variacoes se não existir
+        if 'variacoes' not in st.session_state.atributo_atual:
+            st.session_state.atributo_atual['variacoes'] = []
+            
+        default_var = "\n".join([v['descricao'] for v in st.session_state.atributo_atual['variacoes']])
         var_text = st.text_area(
             "Variações (uma por linha):", 
             value=default_var, 
@@ -293,7 +297,17 @@ class ExtratorAtributos:
         
         if var_text.strip():
             variacoes = [v.strip() for v in var_text.split('\n') if v.strip()]
-            st.session_state.atributo_atual['variacoes'] = [{'descricao': v, 'padroes': []} for v in variacoes]
+            # Mantém os padrões existentes se já existirem
+            novas_variacoes = []
+            for v in variacoes:
+                # Verifica se já existe uma variação com esse nome
+                existente = next((item for item in st.session_state.atributo_atual['variacoes'] if item['descricao'] == v), None)
+                if existente:
+                    novas_variacoes.append(existente)
+                else:
+                    novas_variacoes.append({'descricao': v, 'padroes': []})
+            
+            st.session_state.atributo_atual['variacoes'] = novas_variacoes
     
     def render_passo_padroes(self):
         """Renderiza a etapa de definição dos padrões de reconhecimento"""
@@ -327,16 +341,15 @@ class ExtratorAtributos:
         
         # Implementação alternativa sem streamlit_sortables
         variacoes = st.session_state.atributo_atual['variacoes']
-        ordem = list(range(len(variacoes)))
         
-        # Se ainda não tem ordem definida, cria uma
+        # Se ainda não tem ordem definida, usa a ordem atual
         if 'ordem_prioridade' not in st.session_state:
-            st.session_state.ordem_prioridade = ordem.copy()
+            st.session_state.ordem_prioridade = list(range(len(variacoes)))
         
-        # Interface para reordenar
-        for i in range(len(variacoes)):
+        # Cria uma lista ordenável
+        for i, idx in enumerate(st.session_state.ordem_prioridade):
             # Mostra um selectbox para cada posição
-            opcoes = [f"{idx+1}. {variacoes[idx]['descricao']}" for idx in ordem]
+            opcoes = [f"{j+1}. {variacoes[j]['descricao']}" for j in st.session_state.ordem_prioridade]
             selecao = st.selectbox(
                 f"Posição {i+1}",
                 opcoes,
@@ -344,14 +357,15 @@ class ExtratorAtributos:
                 key=f"priority_{i}"
             )
             
-            # Atualiza a ordem
+            # Atualiza a ordem se necessário
             idx_selecionado = opcoes.index(selecao)
             if idx_selecionado != i:
-                ordem[i], ordem[idx_selecionado] = ordem[idx_selecionado], ordem[i]
+                # Move o item selecionado para a posição atual
+                item = st.session_state.ordem_prioridade.pop(idx_selecionado)
+                st.session_state.ordem_prioridade.insert(i, item)
         
-        # Aplica a nova ordem
-        novas_variacoes = [variacoes[idx] for idx in ordem]
-        st.session_state.atributo_atual['variacoes'] = novas_variacoes
+        # Aplica a nova ordem às variações
+        st.session_state.atributo_atual['variacoes'] = [variacoes[idx] for idx in st.session_state.ordem_prioridade]
     
     def render_passo_formato(self):
         """Renderiza a etapa de seleção do formato de saída"""
@@ -428,7 +442,10 @@ class ExtratorAtributos:
             raise ValueError("Tipo de retorno não definido")
         
         # Salva o atributo
-        st.session_state.atributos[st.session_state.atributo_atual['nome']] = st.session_state.atributo_atual.copy()
+        st.session_state.atributos[st.session_state.atributo_atual['nome']] = {
+            'tipo_retorno': st.session_state.atributo_atual['tipo_retorno'],
+            'variacoes': st.session_state.atributo_atual['variacoes']
+        }
         
         # Reseta para nova configuração
         st.session_state.etapa_configuracao = 0
@@ -455,7 +472,11 @@ class ExtratorAtributos:
     def editar_atributo(self, nome_atributo):
         """Inicia a edição de um atributo existente"""
         if nome_atributo in st.session_state.atributos:
-            st.session_state.atributo_atual = st.session_state.atributos[nome_atributo].copy()
+            st.session_state.atributo_atual = {
+                'nome': nome_atributo,
+                'tipo_retorno': st.session_state.atributos[nome_atributo]['tipo_retorno'],
+                'variacoes': st.session_state.atributos[nome_atributo]['variacoes']
+            }
             st.session_state.etapa_configuracao = 0
             st.rerun()
     
@@ -523,7 +544,6 @@ class ExtratorAtributos:
                 
                 # Cria o atributo
                 novo_atributo = {
-                    'nome': nome,
                     'tipo_retorno': config['tipo_retorno'],
                     'variacoes': []
                 }
