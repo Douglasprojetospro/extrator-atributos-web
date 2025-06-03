@@ -1,5 +1,6 @@
-streamlit>=1.35.0
-pandas>=2.0.0
-openpyxl>=3.1.0
-requests>=2.31.0
-streamlit-sortables>=0.1.2
+streamlit
+pandas
+openpyxl
+xlsxwriter
+PyGithub
+python-dotenv
