@@ -1,4 +1,3 @@
-python
 import pandas as pd
 import re
 import os
@@ -175,7 +174,7 @@ class ExtratorAtributos:
             col_csv, col_excel = st.columns(2)
             
             with col_csv:
-                csv = self.dados_processados.to_csv(index=False).encode('utf-8')
+                csv = st.session_state.dados_processados.to_csv(index=False).encode('utf-8')
                 st.download_button(
                     label="Exportar como CSV",
                     data=csv,
@@ -186,7 +185,7 @@ class ExtratorAtributos:
             with col_excel:
                 excel_buffer = BytesIO()
                 with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
-                    self.dados_processados.to_excel(writer, index=False)
+                    st.session_state.dados_processados.to_excel(writer, index=False)
                 excel_bytes = excel_buffer.getvalue()
                 
                 st.download_button(
