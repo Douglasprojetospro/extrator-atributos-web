@@ -7,6 +7,7 @@ from io import BytesIO
 import requests
 import base64
 from github import Github
+from streamlit_sortables import sort_items
 
 class ExtratorAtributos:
     def __init__(self):
@@ -25,6 +26,12 @@ class ExtratorAtributos:
             st.session_state.dados_processados = None
         if 'atributos' not in st.session_state:
             st.session_state.atributos = {}
+        if 'atributo_atual' not in st.session_state:
+            st.session_state.atributo_atual = {}
+        if 'etapa_configuracao' not in st.session_state:
+            st.session_state.etapa_configuracao = 0
+        if 'variacoes_ordenadas' not in st.session_state:
+            st.session_state.variacoes_ordenadas = []
         
         self.setup_ui()
     
@@ -91,11 +98,11 @@ class ExtratorAtributos:
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            if st.button("← Voltar", disabled=self.etapa_configuracao == 0):
+            if st.button("← Voltar", disabled=st.session_state.etapa_configuracao == 0):
                 self.voltar_passo()
         
         with col2:
-            texto_botao = "Avançar →" if self.etapa_configuracao < 4 else "Concluir"
+            texto_botao = "Avançar →" if st.session_state.etapa_configuracao < 4 else "Concluir"
             if st.button(texto_botao):
                 self.avancar_passo()
         
@@ -123,6 +130,7 @@ class ExtratorAtributos:
                 {
                     'Atributo': nome,
                     'Variações': ", ".join([v['descricao'] for v in config['variacoes']]),
+                    'Padrões': sum(len(v['padroes']) for v in config['variacoes']),
                     'Prioridade': config['variacoes'][0]['descricao'],
                     'Formato': "Valor" if config['tipo_retorno'] == "valor" else "Texto" if config['tipo_retorno'] == "texto" else "Completo"
                 }
@@ -212,122 +220,126 @@ class ExtratorAtributos:
             "5. Selecione o formato de retorno para este atributo\n"
             "O sistema pode retornar apenas o valor, o texto padrão ou uma descrição completa."
         ]
-        return instrucoes[self.etapa_configuracao]
+        return instrucoes[st.session_state.etapa_configuracao]
     
     def render_passo_atual(self):
-        if self.etapa_configuracao == 0:
-            self.atributo_atual['nome'] = st.text_input("Nome do Atributo:", 
-                                                      value=self.atributo_atual.get('nome', ''))
+        if st.session_state.etapa_configuracao == 0:
+            st.session_state.atributo_atual['nome'] = st.text_input(
+                "Nome do Atributo:", 
+                value=st.session_state.atributo_atual.get('nome', '')
+            )
         
-        elif self.etapa_configuracao == 1:
-            default_var = "\n".join([v['descricao'] for v in self.atributo_atual.get('variacoes', [])])
-            var_text = st.text_area("Variações (uma por linha):", 
-                                  value=default_var, height=150)
+        elif st.session_state.etapa_configuracao == 1:
+            default_var = "\n".join([v['descricao'] for v in st.session_state.atributo_atual.get('variacoes', [])])
+            var_text = st.text_area(
+                "Variações (uma por linha):", 
+                value=default_var, 
+                height=150,
+                key="var_text_area"
+            )
             
-            if 'variacoes' not in self.atributo_atual and var_text.strip():
+            if var_text.strip():
                 variacoes = [v.strip() for v in var_text.split('\n') if v.strip()]
-                self.atributo_atual['variacoes'] = [{'descricao': v, 'padroes': []} for v in variacoes]
+                st.session_state.atributo_atual['variacoes'] = [{'descricao': v, 'padroes': []} for v in variacoes]
         
-        elif self.etapa_configuracao == 2:
-            if 'variacoes' not in self.atributo_atual:
+        elif st.session_state.etapa_configuracao == 2:
+            if 'variacoes' not in st.session_state.atributo_atual or not st.session_state.atributo_atual['variacoes']:
                 st.warning("Por favor, volte e defina as variações primeiro")
                 return
             
-            tabs = st.tabs([v['descricao'] for v in self.atributo_atual['variacoes']])
+            tabs = st.tabs([v['descricao'] for v in st.session_state.atributo_atual['variacoes']])
             
-            for i, variacao in enumerate(self.atributo_atual['variacoes']):
+            for i, variacao in enumerate(st.session_state.atributo_atual['variacoes']):
                 with tabs[i]:
                     default_padroes = "\n".join(variacao.get('padroes', []))
-                    padroes = st.text_area(f"Padrões para '{variacao['descricao']}':",
-                                         value=default_padroes, height=100,
-                                         key=f"padroes_{i}")
+                    padroes = st.text_area(
+                        f"Padrões para '{variacao['descricao']}':",
+                        value=default_padroes, 
+                        height=100,
+                        key=f"padroes_{i}"
+                    )
                     
                     if padroes.strip():
                         variacao['padroes'] = [p.strip() for p in padroes.split('\n') if p.strip()]
         
-        elif self.etapa_configuracao == 3:
-            if 'variacoes' not in self.atributo_atual:
+        elif st.session_state.etapa_configuracao == 3:
+            if 'variacoes' not in st.session_state.atributo_atual or not st.session_state.atributo_atual['variacoes']:
                 st.warning("Por favor, complete os passos anteriores primeiro")
                 return
             
             st.write("Arraste para ordenar (a primeira tem maior prioridade):")
             
-            # Cria uma lista ordenável com st.columns
-            variacoes_ordenadas = st.session_state.get('variacoes_ordenadas', 
-                                                      [v['descricao'] for v in self.atributo_atual['variacoes']])
+            # Usando streamlit-sortables para uma interface de arrastar e soltar
+            items = [{'id': i, 'content': v['descricao']} 
+                    for i, v in enumerate(st.session_state.atributo_atual['variacoes'])]
             
-            for i, descricao in enumerate(variacoes_ordenadas):
-                col1, col2 = st.columns([0.9, 0.1])
-                
-                with col1:
-                    st.text_input(f"Posição {i+1}", value=descricao, 
-                                 key=f"var_{i}", disabled=True)
-                
-                with col2:
-                    if st.button("↑", key=f"up_{i}") and i > 0:
-                        variacoes_ordenadas[i], variacoes_ordenadas[i-1] = variacoes_ordenadas[i-1], variacoes_ordenadas[i]
-                        st.session_state.variacoes_ordenadas = variacoes_ordenadas
-                        st.experimental_rerun()
-                    
-                    if st.button("↓", key=f"down_{i}") and i < len(variacoes_ordenadas)-1:
-                        variacoes_ordenadas[i], variacoes_ordenadas[i+1] = variacoes_ordenadas[i+1], variacoes_ordenadas[i]
-                        st.session_state.variacoes_ordenadas = variacoes_ordenadas
-                        st.experimental_rerun()
+            sorted_items = sort_items(items, direction="vertical")
             
             # Atualiza a ordem das variações
             novas_variacoes = []
-            for descricao in variacoes_ordenadas:
-                for variacao in self.atributo_atual['variacoes']:
-                    if variacao['descricao'] == descricao:
-                        novas_variacoes.append(variacao)
-                        break
+            for item in sorted_items:
+                idx = item['id']
+                novas_variacoes.append(st.session_state.atributo_atual['variacoes'][idx])
             
-            self.atributo_atual['variacoes'] = novas_variacoes
+            st.session_state.atributo_atual['variacoes'] = novas_variacoes
         
-        elif self.etapa_configuracao == 4:
-            tipo_retorno = st.radio("Formato de retorno:",
-                                  options=["valor", "texto", "completo"],
-                                  index=["valor", "texto", "completo"].index(
-                                      self.atributo_atual.get('tipo_retorno', 'texto')),
-                                  format_func=lambda x: {
-                                      'valor': 'Valor (ex: "110")',
-                                      'texto': 'Texto Padrão (ex: "110V")',
-                                      'completo': 'Descrição Completa (ex: "Voltagem: 110V")'
-                                  }[x])
+        elif st.session_state.etapa_configuracao == 4:
+            tipo_retorno = st.radio(
+                "Formato de retorno:",
+                options=["valor", "texto", "completo"],
+                index=["valor", "texto", "completo"].index(
+                    st.session_state.atributo_atual.get('tipo_retorno', 'texto')),
+                format_func=lambda x: {
+                    'valor': 'Valor (ex: "110")',
+                    'texto': 'Texto Padrão (ex: "110V")',
+                    'completo': 'Descrição Completa (ex: "Voltagem: 110V")'
+                }[x],
+                key="tipo_retorno_radio"
+            )
             
-            self.atributo_atual['tipo_retorno'] = tipo_retorno
+            st.session_state.atributo_atual['tipo_retorno'] = tipo_retorno
     
     def avancar_passo(self):
         try:
-            if self.etapa_configuracao == 0:
-                if not self.atributo_atual.get('nome', '').strip():
+            if st.session_state.etapa_configuracao == 0:
+                if not st.session_state.atributo_atual.get('nome', '').strip():
                     raise ValueError("Por favor, informe um nome para o atributo")
                 
-                self.etapa_configuracao += 1
+                st.session_state.etapa_configuracao += 1
             
-            elif self.etapa_configuracao == 1:
-                if 'variacoes' not in self.atributo_atual or not self.atributo_atual['variacoes']:
+            elif st.session_state.etapa_configuracao == 1:
+                if 'variacoes' not in st.session_state.atributo_atual or not st.session_state.atributo_atual['variacoes']:
                     raise ValueError("Por favor, informe pelo menos uma variação")
                 
-                self.etapa_configuracao += 1
+                st.session_state.etapa_configuracao += 1
             
-            elif self.etapa_configuracao == 2:
-                for variacao in self.atributo_atual['variacoes']:
+            elif st.session_state.etapa_configuracao == 2:
+                for variacao in st.session_state.atributo_atual['variacoes']:
                     if not variacao.get('padroes', []):
                         raise ValueError(f"Por favor, informe pelo menos um padrão para '{variacao['descricao']}'")
                 
-                self.etapa_configuracao += 1
-                st.session_state.variacoes_ordenadas = [v['descricao'] for v in self.atributo_atual['variacoes']]
+                st.session_state.etapa_configuracao += 1
             
-            elif self.etapa_configuracao == 3:
-                self.etapa_configuracao += 1
+            elif st.session_state.etapa_configuracao == 3:
+                st.session_state.etapa_configuracao += 1
             
-            elif self.etapa_configuracao == 4:
-                st.session_state.atributos[self.atributo_atual['nome']] = self.atributo_atual.copy()
-                self.etapa_configuracao = 0
-                self.atributo_atual = {}
-                if 'variacoes_ordenadas' in st.session_state:
-                    del st.session_state.variacoes_ordenadas
+            elif st.session_state.etapa_configuracao == 4:
+                # Validação final antes de salvar
+                if 'nome' not in st.session_state.atributo_atual:
+                    raise ValueError("Nome do atributo não definido")
+                
+                if 'variacoes' not in st.session_state.atributo_atual or not st.session_state.atributo_atual['variacoes']:
+                    raise ValueError("Nenhuma variação definida")
+                
+                if 'tipo_retorno' not in st.session_state.atributo_atual:
+                    raise ValueError("Tipo de retorno não definido")
+                
+                # Salva o atributo
+                st.session_state.atributos[st.session_state.atributo_atual['nome']] = st.session_state.atributo_atual.copy()
+                
+                # Reseta para nova configuração
+                st.session_state.etapa_configuracao = 0
+                st.session_state.atributo_atual = {}
                 
                 st.success("Atributo configurado com sucesso!")
             
@@ -335,30 +347,30 @@ class ExtratorAtributos:
             st.error(str(e))
     
     def voltar_passo(self):
-        if self.etapa_configuracao > 0:
-            self.etapa_configuracao -= 1
-            if self.etapa_configuracao < 3 and 'variacoes_ordenadas' in st.session_state:
-                del st.session_state.variacoes_ordenadas
+        if st.session_state.etapa_configuracao > 0:
+            st.session_state.etapa_configuracao -= 1
     
     def cancelar_configuracao(self):
-        self.etapa_configuracao = 0
-        self.atributo_atual = {}
-        if 'variacoes_ordenadas' in st.session_state:
-            del st.session_state.variacoes_ordenadas
+        st.session_state.etapa_configuracao = 0
+        st.session_state.atributo_atual = {}
         st.info("Configuração cancelada")
     
     def editar_atributo(self, nome_atributo):
-        self.atributo_atual = st.session_state.atributos[nome_atributo].copy()
-        self.etapa_configuracao = 0
-        st.session_state.variacoes_ordenadas = [v['descricao'] for v in self.atributo_atual['variacoes']]
+        if nome_atributo in st.session_state.atributos:
+            st.session_state.atributo_atual = st.session_state.atributos[nome_atributo].copy()
+            st.session_state.etapa_configuracao = 0
+            st.experimental_rerun()
     
     def remover_atributo(self, nome_atributo):
-        del st.session_state.atributos[nome_atributo]
-        st.success(f"Atributo '{nome_atributo}' removido com sucesso!")
+        if nome_atributo in st.session_state.atributos:
+            del st.session_state.atributos[nome_atributo]
+            st.success(f"Atributo '{nome_atributo}' removido com sucesso!")
+            st.experimental_rerun()
     
     def limpar_atributos(self):
         st.session_state.atributos = {}
         st.success("Todos os atributos foram removidos!")
+        st.experimental_rerun()
     
     def exportar_configuracoes(self):
         if not st.session_state.atributos:
@@ -407,7 +419,7 @@ class ExtratorAtributos:
                     continue
                 
                 # Cria o atributo
-                st.session_state.atributos[nome] = {
+                novo_atributo = {
                     'nome': nome,
                     'tipo_retorno': config['tipo_retorno'],
                     'variacoes': []
@@ -421,12 +433,17 @@ class ExtratorAtributos:
                     if 'descricao' not in variacao or 'padroes' not in variacao:
                         continue
                     
-                    st.session_state.atributos[nome]['variacoes'].append({
+                    novo_atributo['variacoes'].append({
                         'descricao': variacao['descricao'],
                         'padroes': variacao['padroes']
                     })
+                
+                # Só adiciona se tiver pelo menos uma variação válida
+                if novo_atributo['variacoes']:
+                    st.session_state.atributos[nome] = novo_atributo
             
             st.success("Configurações importadas com sucesso!")
+            st.experimental_rerun()
         
         except json.JSONDecodeError as e:
             st.error(f"Arquivo JSON inválido: {str(e)}")
@@ -491,8 +508,10 @@ class ExtratorAtributos:
     
     def processar_dados(self):
         try:
+            # Cria uma cópia dos dados originais
             st.session_state.dados_processados = st.session_state.dados_originais.copy()
             
+            # Processa cada atributo configurado
             for atributo_nome, config in st.session_state.atributos.items():
                 tipo_retorno = config['tipo_retorno']
                 variacoes = config['variacoes']
@@ -501,18 +520,17 @@ class ExtratorAtributos:
                 regex_variacoes = []
                 for variacao in variacoes:
                     padroes_escaped = [re.escape(p) for p in variacao['padroes']]
-                    regex = r'\b(' + '|'.join(padroes_escaped) + r')\b'
+                    regex = r'(?i)\b(' + '|'.join(padroes_escaped) + r')\b'
                     regex_variacoes.append((regex, variacao['descricao']))
                 
-                st.session_state.dados_processados[atributo_nome] = ""
-                
-                for idx, row in st.session_state.dados_processados.iterrows():
-                    descricao = str(row['Descrição']).lower()
+                # Aplica a extração para cada linha
+                resultados = []
+                for descricao in st.session_state.dados_processados['Descrição'].astype(str):
                     resultado = None
                     
                     # Verifica cada variação na ordem de prioridade
                     for regex, desc_padrao in regex_variacoes:
-                        match = re.search(regex, descricao, re.IGNORECASE)
+                        match = re.search(regex, descricao)
                         if match:
                             resultado = self.formatar_resultado(
                                 match.group(1),
@@ -522,12 +540,16 @@ class ExtratorAtributos:
                             )
                             break  # Usa a primeira correspondência (maior prioridade)
                     
-                    st.session_state.dados_processados.at[idx, atributo_nome] = resultado if resultado else ""
+                    resultados.append(resultado if resultado else "")
+                
+                # Adiciona a coluna de resultados
+                st.session_state.dados_processados[atributo_nome] = resultados
             
             st.success("Processamento concluído com sucesso!")
         
         except Exception as e:
             st.error(f"Falha ao processar dados: {str(e)}")
+            st.session_state.dados_processados = None
     
     def formatar_resultado(self, valor_encontrado, tipo_retorno, nome_atributo, descricao_padrao):
         if tipo_retorno == "valor":
@@ -542,4 +564,4 @@ class ExtratorAtributos:
 
 # Executa a aplicação
 if __name__ == "__main__":
-    app = ExtratorAtributos()
+    extrator = ExtratorAtributos()
